@@ -1,0 +1,14 @@
+{
+  "redis": {
+    "db": 10,
+    "password": "some pwd"
+  },
+  "statsd": {
+    "host": "127.0.0.1",
+    "port": 8125,
+    "globalTags": []
+  },
+  "jwtSecret": "test123-test123-test123-test123-test123-test123-test123",
+  "previousJwtSecret": "old123-old123-old123-old123-old123-old123-old123",
+  "jwtCookieName": "test-ws-token"
+}

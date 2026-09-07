@@ -1,0 +1,120 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+import {
+  AdhocFilter,
+  isFreeFormAdhocFilter,
+  isSimpleAdhocFilter,
+  SimpleAdhocFilter,
+} from '@superset-ui/core';
+import {
+  OPERATOR_ENUM_TO_OPERATOR_TYPE,
+  Operators,
+} from 'src/explore/constants';
+import { getSimpleSQLExpression } from 'src/explore/exploreUtils';
+
+export const OPERATORS_TO_SQL = {
+  '==': '=',
+  '!=': '<>',
+  '>': '>',
+  '<': '<',
+  '>=': '>=',
+  '<=': '<=',
+  IN: 'IN',
+  'NOT IN': 'NOT IN',
+  LIKE: 'LIKE',
+  ILIKE: 'ILIKE',
+  REGEX: 'REGEX',
+  'IS NOT NULL': 'IS NOT NULL',
+  'IS NULL': 'IS NULL',
+  'IS TRUE': 'IS TRUE',
+  'IS FALSE': 'IS FALSE',
+  // Element-level array operators (shown as filter labels; not executable SQL —
+  // the Custom SQL tab is hidden for these).
+  CONTAINS_ANY: 'CONTAINS ANY',
+  CONTAINS_ALL: 'CONTAINS ALL',
+  IS_EMPTY: 'IS EMPTY',
+  IS_NOT_EMPTY: 'IS NOT EMPTY',
+  LENGTH_EQUALS: 'LENGTH =',
+  LENGTH_GREATER_THAN: 'LENGTH >',
+  LENGTH_LESS_THAN: 'LENGTH <',
+  LENGTH_GREATER_THAN_OR_EQUALS: 'LENGTH >=',
+  LENGTH_LESS_THAN_OR_EQUALS: 'LENGTH <=',
+  'LATEST PARTITION': ({
+    datasource,
+  }: {
+    datasource: { schema: string; datasource_name: string };
+  }) =>
+    `= '{{ presto.latest_partition('${datasource.schema}.${datasource.datasource_name}') }}'`,
+};
+
+export interface VerboseColumn {
+  column_name?: string;
+  verbose_name?: string | null;
+}
+
+// Resolves the display label for a filter's subject: the verbose_name of the
+// matching column when one is supplied, falling back to the technical
+// subject used for SQL generation.
+const getDisplaySubject = (
+  subject: string | { column_name?: string } | null | undefined,
+  columns?: VerboseColumn[],
+) => {
+  if (!columns) {
+    return subject ?? undefined;
+  }
+  const columnName =
+    typeof subject === 'object' ? subject?.column_name : subject;
+  const verboseName = columns.find(
+    column => column.column_name === columnName,
+  )?.verbose_name;
+  return verboseName || (subject ?? undefined);
+};
+
+export const translateToSql = (
+  adhocFilter: AdhocFilter,
+  {
+    useSimple,
+    columns,
+  }: { useSimple?: boolean; columns?: VerboseColumn[] } = {},
+) => {
+  if (isSimpleAdhocFilter(adhocFilter) || useSimple) {
+    const { subject, operator } = adhocFilter as SimpleAdhocFilter;
+    const comparator =
+      'comparator' in adhocFilter ? adhocFilter.comparator : undefined;
+    const op =
+      operator &&
+      // 'LATEST PARTITION' supported callback only
+      operator ===
+        OPERATOR_ENUM_TO_OPERATOR_TYPE[Operators.LatestPartition].operation
+        ? // @ts-expect-error TODO: fix missing operator type `NOT LIKE` and `TEMPORAL RANGE`
+          // Also to fix type incompatibility between AdhocFilter and Latest Partition callback args.
+          OPERATORS_TO_SQL[operator](adhocFilter)
+        : // @ts-expect-error TODO: fix missing operator type `NOT LIKE` and `TEMPORAL RANGE`.
+          OPERATORS_TO_SQL[operator];
+    return getSimpleSQLExpression(
+      getDisplaySubject(subject, columns),
+      op,
+      comparator,
+    );
+  }
+  if (isFreeFormAdhocFilter(adhocFilter)) {
+    return adhocFilter.sqlExpression;
+  }
+  return '';
+};

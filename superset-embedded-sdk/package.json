@@ -1,0 +1,64 @@
+{
+  "name": "@superset-ui/embedded-sdk",
+  "version": "0.4.0",
+  "description": "SDK for embedding resources from Superset into your own application",
+  "access": "public",
+  "keywords": [
+    "superset",
+    "embed",
+    "embedded",
+    "sdk",
+    "iframe",
+    "dashboard",
+    "chart",
+    "analytics"
+  ],
+  "files": [
+    "bundle",
+    "lib",
+    "dist"
+  ],
+  "main": "bundle/index.js",
+  "module": "lib/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && babel src --out-dir lib --extensions '.ts' && webpack --mode production",
+    "ci:release": "node ./release-if-necessary.js",
+    "test": "vitest --run --dir src"
+  },
+  "browserslist": [
+    "last 3 chrome versions",
+    "last 3 firefox versions",
+    "last 3 safari versions",
+    "last 3 edge versions"
+  ],
+  "dependencies": {
+    "@superset-ui/switchboard": "^0.20.3",
+    "jwt-decode": "^4.0.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^8.0.1",
+    "@babel/core": "^8.0.1",
+    "@babel/preset-env": "^8.0.1",
+    "@babel/preset-typescript": "^8.0.1",
+    "@types/node": "^26.4.0",
+    "babel-loader": "^10.1.1",
+    "jsdom": "^30.0.1",
+    "tscw-config": "^1.1.2",
+    "typescript": "^7.0.2",
+    "vitest": "^4.0.18",
+    "webpack": "^5.110.2",
+    "webpack-cli": "^7.2.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apache/superset.git",
+    "directory": "superset-embedded-sdk"
+  },
+  "homepage": "https://github.com/apache/superset#readme",
+  "bugs": {
+    "url": "https://github.com/apache/superset/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "Superset"
+}
