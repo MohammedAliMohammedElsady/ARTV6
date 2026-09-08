@@ -43,9 +43,26 @@ if [ "$CYPRESS_CONFIG" == "true" ]; then
     export POSTGRES_DB=superset_cypress
     export SUPERSET__SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://superset:superset@db:5432/superset_cypress
 fi
+
+echo_step "1" "Starting" "Resetting migrations"
+#rm -rf /app/superset/migrations/versions/*
+#superset db stamp bases
+#sudo rm "/app/superset/migrations/versions/2025-04-14_14-24_98211ec132d8_postgres_migration.py"
+#superset db downgrade 98211ec132d8
+#rm -rf /app/superset/migrations/versions/*
+#cd /app/superset
+
+#superset db init
+#rm /app/superset/migrations/versions/2025-04-14_14-24_98211ec132d8_postgres_migration.py
+#superset db upgrade
+#chmod -R 777 /app/superset/migrations/
+#rm -rf /app/superset/migrations/versions/*
+#superset db migrate -m "initial migration for All dbs"
+echo_step "1" "Complete" "Resetting migrations"
+
 # Initialize the database
 echo_step "1" "Starting" "Applying DB migrations"
-superset db upgrade
+#superset db upgrade
 echo_step "1" "Complete" "Applying DB migrations"
 
 # Create an admin user
@@ -55,9 +72,9 @@ if [ "$CYPRESS_CONFIG" == "true" ]; then
 else
     superset fab create-admin \
         --username admin \
-        --email admin@superset.com \
+        --email ART_admin@datagearbi.com \
         --password "$ADMIN_PASSWORD" \
-        --firstname Superset \
+        --firstname ART \
         --lastname Admin
 fi
 echo_step "2" "Complete" "Setting up admin user"
@@ -69,8 +86,6 @@ echo_step "3" "Complete" "Setting up roles and perms"
 if [ "$SUPERSET_LOAD_EXAMPLES" = "yes" ]; then
     # Load some data to play with
     echo_step "4" "Starting" "Loading examples"
-
-
     # If Cypress run which consumes superset_test_config – load required data for tests
     if [ "$CYPRESS_CONFIG" == "true" ]; then
         superset load_examples --load-test-data
