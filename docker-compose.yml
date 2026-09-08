@@ -35,6 +35,7 @@ x-superset-volumes: &superset-volumes
   - ./tests:/app/tests
   - superset_data:/app/data
   - ./local_extensions:/app/local_extensions
+  - ./DGUM_Cetificates:/app/superset/security/certs
 x-common-build: &common-build
   context: .
   target: ${SUPERSET_BUILD_TARGET:-dev} # can use `dev` (default) or `lean`

@@ -151,6 +151,22 @@ if os.getenv("CYPRESS_CONFIG") == "true":
 
     sys.path.pop(0)
 
+
+
+# external auth
+from superset.security.custom_auth import CustomSecurityManager
+
+EXTERNAL_AUTH_URL = os.environ.get(
+    'EXTERNAL_AUTH_URL', "https://art-di-srv.datagearbi.dom:9999")
+POST_URL = os.environ.get(
+    'POST_URL', "/dg-userManagement-console/security/signIn")
+BASE_PATH = "/app/superset/security/certs"
+PATH_CRT = os.environ.get('PATH_CRT', "ART-DI-SRV.datagearbi.dom.crt")
+PATH_KEY = os.environ.get('PATH_KEY', "ART-DI-SRV.datagearbi.dom.key")
+PATH_VERIFY = os.environ.get('PATH_VERIFY', "datagearbi-DC-01-CA.cer")
+
+CUSTOM_SECURITY_MANAGER = CustomSecurityManager
+
 #
 # Optionally import superset_config_docker.py (which will have been included on
 # the PYTHONPATH) in order to allow for local settings to be overridden
