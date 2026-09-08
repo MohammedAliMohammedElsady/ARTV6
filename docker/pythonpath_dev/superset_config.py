@@ -167,6 +167,9 @@ PATH_VERIFY = os.environ.get('PATH_VERIFY', "datagearbi-DC-01-CA.cer")
 
 CUSTOM_SECURITY_MANAGER = CustomSecurityManager
 
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'W0-kW9fpcbICanEYglIC3uafglGTC5PZW0t55923Y6kbTH3ci_SvNdVT') 
+SQLALCHEMY_ENCRYPTED_FIELD_ENGINE = os.environ.get('SQLALCHEMY_ENCRYPTED_FIELD_ENGINE', 'aes')  
 #
 # Optionally import superset_config_docker.py (which will have been included on
 # the PYTHONPATH) in order to allow for local settings to be overridden
