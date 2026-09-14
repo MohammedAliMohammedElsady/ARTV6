@@ -1,5 +1,5 @@
 
-x-superset-image: &superset-image artv3:latest
+x-superset-image: &superset-image artv6:latest
 
 x-superset-volumes: &superset-volumes
   - ./docker:/app/docker
@@ -12,17 +12,17 @@ x-superset-extra-hosts: &superset-extra-hosts
 services:
   redis:
     image: redis:7
-    container_name: ARTV3_cache
+    container_name: ARTV6_cache
     restart: unless-stopped
     volumes:
       - redis:/data
     networks:
-      ARTV3_network:
+      ARTV6_network:
         ipv4_address: 10.150.7.2
 
   # db:
   #   image: postgres:15
-  #   container_name: ARTV3_db
+  #   container_name: ARTV6_db
   #   restart: unless-stopped
   #   env_file:
   #     - path: docker/.env
@@ -33,12 +33,12 @@ services:
   #     - db_home:/var/lib/postgresql/data
   #     - ./docker/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
   #   networks:
-  #     ARTV3_network:
+  #     ARTV6_network:
   #       ipv4_address: 10.150.7.3
 
-  ARTV3_app:
+  ARTV6_app:
     image: *superset-image
-    container_name: ARTV3_app
+    container_name: ARTV6_app
     command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
     user: "root"
     restart: unless-stopped
@@ -50,19 +50,19 @@ services:
     ports:
       - "9065:8088"
     depends_on:
-      ARTV3_init:
+      ARTV6_init:
         condition: service_completed_successfully
     volumes: *superset-volumes
     extra_hosts: *superset-extra-hosts
     environment:
       SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
     networks:
-      ARTV3_network:
+      ARTV6_network:
         ipv4_address: 10.150.7.4
 
-  ARTV3_init:
+  ARTV6_init:
     image: *superset-image
-    container_name: ARTV3_init
+    container_name: ARTV6_init
     command: ["/app/docker/docker-init.sh"]
     user: "root"
     env_file:
@@ -81,12 +81,12 @@ services:
       SUPERSET_LOAD_EXAMPLES: "${SUPERSET_LOAD_EXAMPLES:-no}"
       SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
     networks:
-      ARTV3_network:
+      ARTV6_network:
         ipv4_address: 10.150.7.5
 
-  ARTV3_worker:
+  ARTV6_worker:
     image: *superset-image
-    container_name: ARTV3_worker
+    container_name: ARTV6_worker
     command: ["/app/docker/docker-bootstrap.sh", "worker"]
     user: "root"
     restart: unless-stopped
@@ -96,7 +96,7 @@ services:
       - path: docker/.env-local
         required: false
     depends_on:
-      ARTV3_init:
+      ARTV6_init:
         condition: service_completed_successfully
     volumes: *superset-volumes
     extra_hosts: *superset-extra-hosts
@@ -109,12 +109,12 @@ services:
     environment:
       SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
     networks:
-      ARTV3_network:
+      ARTV6_network:
         ipv4_address: 10.150.7.6
 
-  ARTV3_worker_beat:
+  ARTV6_worker_beat:
     image: *superset-image
-    container_name: ARTV3_worker_beat
+    container_name: ARTV6_worker_beat
     command: ["/app/docker/docker-bootstrap.sh", "beat"]
     user: "root"
     restart: unless-stopped
@@ -124,7 +124,7 @@ services:
       - path: docker/.env-local
         required: false
     depends_on:
-      ARTV3_init:
+      ARTV6_init:
         condition: service_completed_successfully
     volumes: *superset-volumes
     extra_hosts: *superset-extra-hosts
@@ -133,7 +133,7 @@ services:
     environment:
       SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
     networks:
-      ARTV3_network:
+      ARTV6_network:
         ipv4_address: 10.150.7.7
 
 volumes:
@@ -145,7 +145,7 @@ volumes:
     external: false
 
 networks:
-  ARTV3_network:
+  ARTV6_network:
     driver: bridge
     ipam:
       driver: default

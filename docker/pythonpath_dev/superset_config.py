@@ -23,7 +23,7 @@
 import logging
 import os
 import sys
-
+from superset.security.custom_auth import CustomSecurityManager
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
 from superset.security.decrypt_jasypt import jasypt_decrypt
@@ -192,18 +192,14 @@ if os.getenv("CYPRESS_CONFIG") == "true":
 
     sys.path.pop(0)
 
-#
-# Optionally import superset_config_docker.py (which will have been included on
-# the PYTHONPATH) in order to allow for local settings to be overridden
-#
-try:
-    import superset_config_docker
-    from superset_config_docker import *  # noqa: F403
+EXTERNAL_AUTH_URL = os.environ.get(
+    'EXTERNAL_AUTH_URL', "https://art-di-srv.datagearbi.dom:9999")
+POST_URL = os.environ.get(
+    'POST_URL', "/dg-userManagement-console/security/signIn")
+BASE_PATH = "/app/superset/security/certs"
+PATH_CRT = os.environ.get('PATH_CRT', "ART-DI-SRV.datagearbi.dom.crt")
+PATH_KEY = os.environ.get('PATH_KEY', "ART-DI-SRV.datagearbi.dom.key")
+PATH_VERIFY = os.environ.get('PATH_VERIFY', "datagearbi-DC-01-CA.cer")
 
-    logger.info(
-        "Loaded your Docker configuration at [%s]", superset_config_docker.__file__
-    )
-except ImportError:
-    logger.info("Using default Docker config...")
-
+CUSTOM_SECURITY_MANAGER = CustomSecurityManager
  

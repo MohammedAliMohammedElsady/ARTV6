@@ -470,7 +470,5 @@ xlsxwriter==3.2.9
     #   apache-superset (pyproject.toml)
     #   pandas
 
-pyodbc
-pymssql
-oracledb
-pydantic
+pymssql>=2.3.13,<3
+oracledb>=4.0.2,<5
