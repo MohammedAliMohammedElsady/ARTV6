@@ -26,9 +26,17 @@ import sys
 
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
+from superset.security.decrypt_jasypt import jasypt_decrypt
+
+
+
 
 logger = logging.getLogger()
 
+
+SUPERSET_LOAD_EXAMPLES='no'
+#  DATABASE_KEY is the Jasypt encryption key (set via env var)
+DATABASE_KEY = os.getenv("DATABASE_KEY")
 DATABASE_DIALECT = os.getenv("DATABASE_DIALECT")
 DATABASE_USER = os.getenv("DATABASE_USER")
 DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD")
@@ -42,13 +50,42 @@ EXAMPLES_HOST = os.getenv("EXAMPLES_HOST")
 EXAMPLES_PORT = os.getenv("EXAMPLES_PORT")
 EXAMPLES_DB = os.getenv("EXAMPLES_DB")
 
+SQLALCHEMY_ENCRYPTED_FIELD_ENGINE = 'SECRET_KEY_DATABASE_CONNECTION' 
+
+
+_raw_db_password =  os.getenv("DATABASE_PASSWORD" , "")
+_raw_examples_password = os.getenv("EXAMPLES_PASSWORD","")
+
+if DATABASE_KEY and _raw_db_password:
+    try:
+        DATABASE_PASSWORD = jasypt_decrypt(DATABASE_KEY, _raw_db_password)
+        logger.info("DATABASE_PASSWORD decrypted successfully via Jasypt")
+    except Exception as e:
+        logger.warning("Jasypt decryption failed for DATABASE_PASSWORD, using raw value: %s", e)
+        DATABASE_PASSWORD = _raw_db_password
+else:
+    DATABASE_PASSWORD = _raw_db_password
+
+if DATABASE_KEY and _raw_examples_password:
+    try:
+        EXAMPLES_PASSWORD = jasypt_decrypt(DATABASE_KEY, _raw_examples_password)
+        logger.info("EXAMPLES_PASSWORD decrypted successfully via Jasypt")
+    except Exception as e:
+        logger.warning("Jasypt decryption failed for EXAMPLES_PASSWORD, using raw value: %s", e)
+        EXAMPLES_PASSWORD = _raw_examples_password
+else:
+    EXAMPLES_PASSWORD = _raw_examples_password
+
+
+
+
 # The SQLAlchemy connection string.
 SQLALCHEMY_DATABASE_URI = (
     f"{DATABASE_DIALECT}://"
     f"{DATABASE_USER}:{DATABASE_PASSWORD}@"
     f"{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_DB}"
 )
-
+logger.warning("Final SQLALCHEMY_DATABASE_URI: %s", SQLALCHEMY_DATABASE_URI)
 # Use environment variable if set, otherwise construct from components
 # This MUST take precedence over any other configuration
 SQLALCHEMY_EXAMPLES_URI = os.getenv(
@@ -114,6 +151,10 @@ class CeleryConfig:
 
 CELERY_CONFIG = CeleryConfig
 
+
+
+
+
 FEATURE_FLAGS = {
     "ALERT_REPORTS": True,
     "DATASET_FOLDERS": True,
@@ -164,3 +205,5 @@ try:
     )
 except ImportError:
     logger.info("Using default Docker config...")
+
+ 
