@@ -1,16 +1,22 @@
 """
-External User-Management integration for Superset 6.1 (Flask-AppBuilder 5.2.x).
+External User-Management (DGUM) integration for Superset 6.1 (Flask-AppBuilder 5.2.x).
 
 Login flow:
   React login page → POST /login/ → FAB AuthDBView → sm.auth_user_db()
 We override ``auth_user_db`` (instead of replacing the login view) so the
 React login page, ``?next=``, rate limiting, the "invalid login" message and
 the forced-password-change exemptions (which match the ``AuthDBView`` class
-name exactly) all keep working.
+name exactly) all keep working. On success the custom ``AuthDBView`` always
+redirects to the welcome (home) page.
 
-On successful external auth the user's local roles AND groups are synced:
-  * external roles  → Superset roles  (``ab_role``,  created if missing)
-  * external groups → Superset groups (``ab_group``, created if missing)
+Order:
+  1. Local DB  — user exists locally with a matching password → logged in with
+     the roles and groups already assigned in Superset (DGUM is not called).
+  2. DGUM      — otherwise POST to the DGUM signIn endpoint. On HTTP 200 the
+     user, its roles and its groups are created locally (if missing) and
+     assigned to the user, then the user is logged in.
+  3. Anything else → login denied.
+
 Roles attached to a group are managed in Superset (Settings → Groups) and are
 never overwritten here. Effective permissions = user.roles + group.roles.
 
@@ -24,7 +30,11 @@ import os
 from typing import List, Optional
 
 import requests
-from flask import current_app
+from flask import current_app, redirect, request, url_for
+from flask_appbuilder import expose
+from flask_appbuilder.security.decorators import no_cache
+from flask_appbuilder.security.views import AuthDBView as FabAuthDBView
+from flask_login import current_user
 from pydantic import BaseModel
 from werkzeug.security import generate_password_hash
 
@@ -36,54 +46,74 @@ logger = logging.getLogger(__name__)
 BASE_ROLE = "Gamma"
 
 
-# ─── Pydantic Models ───────────────────────────────────────────────────────────
-class ExternalGroup(BaseModel):
-    id: int
-    name: str
+# ─── Login view: always land on the welcome page ───────────────────────────────
+# Keeps the class name ``AuthDBView`` so the endpoint stays ``AuthDBView.login``
+# (the forced-password-change exemptions match that class name exactly).
+class AuthDBView(FabAuthDBView):
+    @expose("/login/", methods=["GET", "POST"])
+    @no_cache
+    def login(self):
+        response = super().login()
+        if request.method == "POST" and current_user.is_authenticated:
+            return redirect(url_for("Superset.welcome"))
+        return response
 
 
-class ExternalRole(BaseModel):
-    id: int
-    name: str
+# ─── Pydantic Models (DGUM ``UserMap``) ────────────────────────────────────────
+class ExternalShared(BaseModel):
+    id: Optional[int] = None
+    name: Optional[str] = None
+
+
+class ExternalAccount(BaseModel):
+    id: Optional[int] = None
+    authenticationDomain: Optional[str] = None
+    dataUpdate: Optional[str] = None
+    status: Optional[str] = None
 
 
 class ExternalUser(BaseModel):
-    id: int
+    id: Optional[int] = None
     name: str
-    displayName: str
+    displayName: Optional[str] = None
     description: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
     email: Optional[str] = None
-    status: str
+    status: Optional[str] = None  # PENDING | APPROVED | SPAM | UPDATE
     createdBy: Optional[str] = None
     createdDate: Optional[str] = None
     password: Optional[str] = None
     lastUpdatedBy: Optional[str] = None
     lastUpdatedDate: Optional[str] = None
-    active: bool
-    enable: bool
-    groups: List[ExternalGroup] = []
-    roles: List[ExternalRole] = []
+    active: Optional[bool] = None
+    enable: Optional[bool] = None
+    accounts: List[ExternalAccount] = []
+    groups: List[ExternalShared] = []
+    roles: List[ExternalShared] = []
     groupsIds: List[int] = []
     rolesIds: List[int] = []
 
 
 # ─── Custom Security Manager ───────────────────────────────────────────────────
 class CustomSecurityManager(SupersetSecurityManager):
+    authdbview = AuthDBView
+
     def auth_user_db(self, username, password):
         username = (username or "").strip()
         if not username or not password:
             return None
 
+        # 1. Local DB first — keeps the user's local roles and groups
+        user = super().auth_user_db(username, password)
+        if user:
+            logger.info("User=%s logged in via local DB", username)
+            return user
+
+        # 2. External user management
+        logger.info("Local login failed for user=%s — trying external auth", username)
         external_user = self._external_auth(username, password)
         if external_user is None:
-            # External auth failed / unreachable → fall back to local DB users
-            logger.warning("External auth failed for user=%s — trying local DB", username)
-            return super().auth_user_db(username, password)
-
-        if not (external_user.active and external_user.enable):
-            logger.warning("External user=%s is inactive/disabled — login denied", username)
             return None
 
         try:
@@ -95,6 +125,7 @@ class CustomSecurityManager(SupersetSecurityManager):
 
         if user:
             self.update_user_auth_stat(user, True)
+            logger.info("User=%s logged in via external auth", username)
         return user
 
     # ── External API ───────────────────────────────────────────────────────────
@@ -161,13 +192,14 @@ class CustomSecurityManager(SupersetSecurityManager):
             if not user:
                 raise RuntimeError("add_user() returned None — check logs / duplicate email")
         else:
+            # Exists locally but the local password did not match
             user.first_name = ext.displayName or ext.name
             user.last_name = ext.name
             if ext.email:
                 user.email = ext.email
             user.roles = roles
             user.groups = groups
-            # keep local hash current so the local-DB fallback works
+            # keep local hash current so the next login works from the local DB
             user.password = generate_password_hash(password)
 
         user.active = True
@@ -181,8 +213,8 @@ class CustomSecurityManager(SupersetSecurityManager):
         )
         return user
 
-    def _get_or_create_roles(self, ext_roles: List[ExternalRole]):
-        names = [BASE_ROLE] + [r.name for r in ext_roles]
+    def _get_or_create_roles(self, ext_roles: List[ExternalShared]):
+        names = [BASE_ROLE] + [r.name.strip() for r in ext_roles if r.name and r.name.strip()]
         roles = []
         for name in dict.fromkeys(names):  # dedupe, keep order
             role = self.find_role(name) or self.add_role(name)
@@ -192,9 +224,10 @@ class CustomSecurityManager(SupersetSecurityManager):
                 logger.warning("Could not find/create role=%s", name)
         return roles
 
-    def _get_or_create_groups(self, ext_groups: List[ExternalGroup]):
+    def _get_or_create_groups(self, ext_groups: List[ExternalShared]):
+        names = [g.name.strip() for g in ext_groups if g.name and g.name.strip()]
         groups = []
-        for name in dict.fromkeys(g.name for g in ext_groups):
+        for name in dict.fromkeys(names):
             group = self.find_group(name) or self.add_group(
                 name=name, label=name, description=""
             )
