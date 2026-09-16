@@ -1,5 +1,4 @@
-
-x-superset-image: &superset-image artv6:latest
+x-superset-image: &superset-image artv6:latest   # tip: tag by version, e.g. artv6:6.1.0
 
 x-superset-volumes: &superset-volumes
   - ./docker:/app/docker
@@ -9,70 +8,78 @@ x-superset-volumes: &superset-volumes
 x-superset-extra-hosts: &superset-extra-hosts
   - "art-di-srv.datagearbi.dom:192.168.3.35"
 
+x-superset-env-files: &superset-env-files
+  - path: docker/.env
+    required: true
+  - path: docker/.env-local
+    required: false
+
 services:
-  redis:
+  ARTV6_cache:
     image: redis:7
     container_name: ARTV6_cache
     restart: unless-stopped
     volumes:
       - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       ARTV6_network:
         ipv4_address: 10.150.7.2
 
-  # db:
-  #   image: postgres:15
-  #   container_name: ARTV6_db
-  #   restart: unless-stopped
-  #   env_file:
-  #     - path: docker/.env
-  #       required: true
-  #     - path: docker/.env-local
-  #       required: false
-  #   volumes:
-  #     - db_home:/var/lib/postgresql/data
-  #     - ./docker/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-  #   networks:
-  #     ARTV6_network:
-  #       ipv4_address: 10.150.7.3
-
-  ARTV6_app:
+  # One-shot: decrypts Jasypt passwords (DATABASE_KEY) into /dev/shm (RAM) for ARTV6_db
+  ARTV6_db_secrets:
     image: *superset-image
-    container_name: ARTV6_app
-    command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
+    container_name: ARTV6_db_secrets
+    command: ["python", "/app/docker/pythonpath_dev/decrypt_db_secrets.py"]
     user: "root"
+    restart: "no"
+    env_file: *superset-env-files
+    volumes:
+      - ./docker:/app/docker
+      # /dev/shm is RAM on the host: shared with ARTV6_db, never written to disk
+      - /dev/shm/artv6_db_secrets:/run/db-secrets
+    networks:
+      - ARTV6_network
+
+  ARTV6_db:
+    image: postgres:17
+    container_name: ARTV6_db
     restart: unless-stopped
-    env_file:
-      - path: docker/.env
-        required: true
-      - path: docker/.env-local
-        required: false
-    ports:
-      - "9065:8088"
+    env_file: *superset-env-files
+    entrypoint: ["bash", "/usr/local/bin/postgres-entrypoint.sh"]
+    command: ["postgres"]
     depends_on:
-      ARTV6_init:
+      ARTV6_db_secrets:
         condition: service_completed_successfully
-    volumes: *superset-volumes
-    extra_hosts: *superset-extra-hosts
-    environment:
-      SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
+    volumes:
+      - db_home:/var/lib/postgresql/data
+      - /dev/shm/artv6_db_secrets:/run/db-secrets:ro
+      - ./docker/postgres-entrypoint.sh:/usr/local/bin/postgres-entrypoint.sh:ro
+      - ./docker/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       ARTV6_network:
-        ipv4_address: 10.150.7.4
+        ipv4_address: 10.150.7.3
 
   ARTV6_init:
     image: *superset-image
     container_name: ARTV6_init
     command: ["/app/docker/docker-init.sh"]
     user: "root"
-    env_file:
-      - path: docker/.env
-        required: true
-      - path: docker/.env-local
-        required: false
+    env_file: *superset-env-files
     depends_on:
-      redis:
-        condition: service_started
+      ARTV6_db:
+        condition: service_healthy
+      ARTV6_cache:
+        condition: service_healthy
     volumes: *superset-volumes
     extra_hosts: *superset-extra-hosts
     healthcheck:
@@ -84,20 +91,44 @@ services:
       ARTV6_network:
         ipv4_address: 10.150.7.5
 
+  ARTV6_app:
+    image: *superset-image
+    container_name: ARTV6_app
+    command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
+    user: "root"
+    restart: unless-stopped
+    env_file: *superset-env-files
+    ports:
+      - "9065:8088"
+    depends_on:
+      ARTV6_init:
+        condition: service_completed_successfully
+      ARTV6_db:
+        condition: service_healthy
+      ARTV6_cache:
+        condition: service_healthy
+    volumes: *superset-volumes
+    extra_hosts: *superset-extra-hosts
+    environment:
+      SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
+    networks:
+      ARTV6_network:
+        ipv4_address: 10.150.7.4
+
   ARTV6_worker:
     image: *superset-image
     container_name: ARTV6_worker
     command: ["/app/docker/docker-bootstrap.sh", "worker"]
     user: "root"
     restart: unless-stopped
-    env_file:
-      - path: docker/.env
-        required: true
-      - path: docker/.env-local
-        required: false
+    env_file: *superset-env-files
     depends_on:
       ARTV6_init:
         condition: service_completed_successfully
+      ARTV6_db:
+        condition: service_healthy
+      ARTV6_cache:
+        condition: service_healthy
     volumes: *superset-volumes
     extra_hosts: *superset-extra-hosts
     healthcheck:
@@ -106,6 +137,9 @@ services:
           "CMD-SHELL",
           "celery -A superset.tasks.celery_app:app inspect ping -d celery@$$HOSTNAME"
         ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     environment:
       SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
     networks:
@@ -118,14 +152,14 @@ services:
     command: ["/app/docker/docker-bootstrap.sh", "beat"]
     user: "root"
     restart: unless-stopped
-    env_file:
-      - path: docker/.env
-        required: true
-      - path: docker/.env-local
-        required: false
+    env_file: *superset-env-files
     depends_on:
       ARTV6_init:
         condition: service_completed_successfully
+      ARTV6_db:
+        condition: service_healthy
+      ARTV6_cache:
+        condition: service_healthy
     volumes: *superset-volumes
     extra_hosts: *superset-extra-hosts
     healthcheck:
