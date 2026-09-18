@@ -43,7 +43,8 @@ services:
       # /dev/shm is RAM on the host: shared with ARTV6_db, never written to disk
       - /dev/shm/artv6_db_secrets:/run/db-secrets
     networks:
-      - ARTV6_network
+      ARTV6_network:
+        ipv4_address: 10.150.7.8   # fixed IP: avoids taking 10.150.7.2 from ARTV6_cache
 
   ARTV6_db:
     image: postgres:17
