@@ -26,6 +26,7 @@ import sys
 from superset.security.custom_auth import CustomSecurityManager
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
+from sqlalchemy.dialects import registry
 # Same decrypt used by the ARTV6_db_secrets service for Postgres (DATABASE_KEY / Jasypt)
 from decrypt_db_secrets import decrypt
 
@@ -139,6 +140,34 @@ FEATURE_FLAGS = {
     "MOBILE_CONSUMPTION_MODE": True,
     "SEMANTIC_LAYERS": True,
 }
+# SQLAlchemy 2.0 resolves the bare "oracle" and "mssql" backends to the cx_oracle
+# and pyodbc dialects, and Superset probes only that default dialect when it
+# builds the list of connectable engines (get_available_engine_specs() in
+# superset/db_engine_specs/__init__.py). With cx_Oracle/pyodbc absent, both
+# engines are dropped from /api/v1/database/available/ entirely - no card and no
+# dropdown entry. Point the two backends at the drivers ART actually ships:
+# oracledb (thin mode, no Oracle Instant Client) and pymssql (bundles FreeTDS),
+# so neither image needs Oracle client libs or the msodbcsql apt repo.
+# Side effect, and the intended one: driverless URIs "oracle://" and "mssql://"
+# now resolve to these drivers too. This is what SQLAlchemy 2.1 does by default.
+registry.register(
+    "oracle", "sqlalchemy.dialects.oracle.oracledb", "OracleDialect_oracledb"
+)
+registry.register("mssql", "sqlalchemy.dialects.mssql.pymssql", "MSDialect_pymssql")
+
+# Databases shown as cards on step 1 of the "Connect a database" modal. The
+# strings must match the `engine_name` of the specs in superset/db_engine_specs/.
+# A card only renders if the matching driver is installed in the image
+# (see the `oracle`/`mssql` extras wired into the Dockerfile).
+PREFERRED_DATABASES = [
+    "PostgreSQL",
+    "Microsoft SQL Server",
+    "Oracle",
+    "MySQL",
+    "Presto",
+    "SQLite",
+]
+
 EXTENSIONS_PATH = "/app/docker/extensions"
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
 # The Docker Compose app service is named "superset" and listens on 8088. Report

@@ -278,6 +278,13 @@ RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
 # Install the superset package
 RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
     uv pip install -e .
+# Analytics DB drivers shipped with ART: without these the engines never show
+# up in the "Connect a database" modal (see get_available_engine_specs()).
+# Pins mirror the `mssql` / `oracle` extras in pyproject.toml; installed by
+# name so the editable install above is preserved.
+RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
+    /app/docker/pip-install.sh --requires-build-essential \
+    "pymssql>=2.3.13, <3" "oracledb>=4.0.2, <5"
 RUN python -m compileall /app/superset
 
 USER superset
@@ -307,7 +314,7 @@ RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
 RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
     uv pip install -e .
 
-RUN uv pip install .[postgres]
+RUN uv pip install .[postgres,mssql,oracle]
 RUN python -m compileall /app/superset
 
 USER superset
