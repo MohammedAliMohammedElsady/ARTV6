@@ -2,6 +2,9 @@ x-superset-image: &superset-image artv6:latest   # tip: tag by version, e.g. art
 
 x-superset-volumes: &superset-volumes
   - ./docker:/app/docker
+  - ./superset:/app/superset
+  - ./superset-core:/app/superset-core
+  - ./superset-frontend:/app/superset-frontend
   - superset_home:/app/superset_home
   - ./DGUM_Cetificates:/app/superset/security/certs
 

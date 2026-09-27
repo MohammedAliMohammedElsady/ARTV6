@@ -120,7 +120,7 @@ PACKAGE_JSON_FILE = str(files("superset") / "static/assets/package.json")
 #     "type": "image/png"
 #     "rel": "icon"
 # },
-FAVICONS = [{"href": "/static/assets/images/favicon.png"}]
+FAVICONS = [{"href": "/static/assets/images/fav_icon_data_gear.png"}]
 PDF_COMPRESSION_LEVEL: Literal["NONE", "FAST", "MEDIUM", "SLOW"] = "MEDIUM"
 
 
@@ -216,7 +216,7 @@ DEFAULT_TIME_FILTER = utils.NO_TIME_RANGE
 # [load balancer / proxy / envoy / kong / ...] timeout settings.
 # You should also make sure to configure your WSGI server
 # (gunicorn, nginx, apache, ...) timeout setting to be <= to this setting
-SUPERSET_WEBSERVER_TIMEOUT = int(timedelta(minutes=1).total_seconds())
+SUPERSET_WEBSERVER_TIMEOUT = int(timedelta(minutes=6).total_seconds())
 
 # this 2 settings are used by dashboard period force refresh feature
 # When user choose auto force refresh frequency
@@ -292,7 +292,11 @@ SQLALCHEMY_DATABASE_URI = (
 # `SQLALCHEMY_ENGINE_OPTIONS = {"isolation_level": "READ COMMITTED"}`
 # Also note that we recommend READ COMMITTED for regular operation.
 # Find out more here https://flask-sqlalchemy.palletsprojects.com/en/3.1.x/config/
-SQLALCHEMY_ENGINE_OPTIONS = {}
+SQLALCHEMY_ENGINE_OPTIONS = {
+    "pool_timeout": 600,
+    "pool_recycle": 600,
+    "pool_pre_ping": True,
+}
 
 # In order to hook up a custom password store for all SQLALCHEMY connections
 # implement a function that takes a single argument of type 'sqla.engine.url',
@@ -446,13 +450,13 @@ AUTH_PASSWORD_COMMON_BLOCKLIST: list[str] = []
 # GLOBALS FOR APP Builder
 # ------------------------------
 # Uncomment to setup Your App name
-APP_NAME = "Superset"
+APP_NAME = "Data Gear"
 
 # Specify the App icon
 # NOTE: This variable is used to populate THEME_DEFAULT. If you override this in
 # superset_config.py, you must also override THEME_DEFAULT to see the change,
 # or set THEME_DEFAULT["token"]["brandLogoUrl"] directly.
-APP_ICON = "/static/assets/images/superset-logo-horiz.png"
+APP_ICON = "/static/assets/images/LOGO.png"
 
 # Specify where clicking the logo would take the user
 # Default value of None will take you to '/superset/welcome'
@@ -1123,7 +1127,7 @@ _THEME_DEFAULT_BASE: Theme = {
         # Brand
         # Application name for window titles
         "brandAppName": APP_NAME,
-        "brandLogoAlt": "Apache Superset",
+        "brandLogoAlt": "Data Gear",
         "brandLogoUrl": APP_ICON,
         "brandLogoMargin": "18px 0",
         "brandLogoHref": LOGO_TARGET_PATH or "/",
@@ -1898,7 +1902,7 @@ HTTP_HEADERS: dict[str, Any] = {}
 DEFAULT_DB_ID = None
 
 # Timeout duration for SQL Lab synchronous queries
-SQLLAB_TIMEOUT = int(timedelta(seconds=30).total_seconds())
+SQLLAB_TIMEOUT = int(timedelta(seconds=600).total_seconds())
 
 # BigQuery max fetch size in MB (limits memory usage when fetching large results)
 BQ_FETCH_MAX_MB = 200
