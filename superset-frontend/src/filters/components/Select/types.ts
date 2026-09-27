@@ -34,6 +34,7 @@ export type SelectValue = (number | string | null)[] | null | undefined;
 
 export enum SelectFilterOperatorType {
   Exact = 'exact',
+  Equals = 'equals',
   Contains = 'ilike_contains',
   StartsWith = 'ilike_starts_with',
   EndsWith = 'ilike_ends_with',

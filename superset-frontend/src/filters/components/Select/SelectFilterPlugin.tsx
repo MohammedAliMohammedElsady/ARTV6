@@ -163,9 +163,11 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
     filterState,
   });
   const datatype: GenericDataType = coltypeMap[col];
+  // datatype is unknown when the values query was skipped for a text-input
+  // match type; the config form already limits those types to string columns.
   const isLikeOperator =
     operatorType !== SelectFilterOperatorType.Exact &&
-    datatype === GenericDataType.String;
+    (datatype === undefined || datatype === GenericDataType.String);
   const labelFormatter = useMemo(
     () =>
       getDataRecordFormatter({
@@ -589,6 +591,8 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
 
   const likeInputPlaceholder = useMemo(() => {
     switch (operatorType) {
+      case SelectFilterOperatorType.Equals:
+        return t('Type exact value...');
       case SelectFilterOperatorType.Contains:
         return t('Type to search (contains)...');
       case SelectFilterOperatorType.StartsWith:

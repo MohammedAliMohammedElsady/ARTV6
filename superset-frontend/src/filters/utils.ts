@@ -64,9 +64,22 @@ export const getSelectExtraFormData = (
       },
     ];
   } else if (value !== undefined && value !== null && value.length !== 0) {
-    const isLikeOperator = operatorType !== SelectFilterOperatorType.Exact;
+    const isLikeOperator =
+      operatorType !== SelectFilterOperatorType.Exact &&
+      operatorType !== SelectFilterOperatorType.Equals;
 
-    if (isLikeOperator && typeof value[0] === 'string') {
+    if (
+      operatorType === SelectFilterOperatorType.Equals &&
+      typeof value[0] === 'string'
+    ) {
+      extra.filters = [
+        {
+          col,
+          op: shouldExcludeFilter ? ('!=' as const) : ('==' as const),
+          val: value[0],
+        },
+      ];
+    } else if (isLikeOperator && typeof value[0] === 'string') {
       const wildcardVal = applyWildcard(value[0] as string, operatorType);
       extra.filters = [
         {

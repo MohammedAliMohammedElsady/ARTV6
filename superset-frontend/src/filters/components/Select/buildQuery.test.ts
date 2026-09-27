@@ -211,6 +211,28 @@ test('getSelectExtraFormData generates ILIKE ends-with filter', () => {
   expect(result.filters).toEqual([{ col: 'name', op: 'ILIKE', val: '%son' }]);
 });
 
+test('getSelectExtraFormData generates equals filter', () => {
+  const result = getSelectExtraFormData(
+    'name',
+    ['Jen'],
+    false,
+    false,
+    SelectFilterOperatorType.Equals,
+  );
+  expect(result.filters).toEqual([{ col: 'name', op: '==', val: 'Jen' }]);
+});
+
+test('getSelectExtraFormData generates not-equals filter when excluded', () => {
+  const result = getSelectExtraFormData(
+    'name',
+    ['Jen'],
+    false,
+    true,
+    SelectFilterOperatorType.Equals,
+  );
+  expect(result.filters).toEqual([{ col: 'name', op: '!=', val: 'Jen' }]);
+});
+
 test('getSelectExtraFormData generates NOT ILIKE with excludeFilter and LIKE operator', () => {
   const result = getSelectExtraFormData(
     'name',
