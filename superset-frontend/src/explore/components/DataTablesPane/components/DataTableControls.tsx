@@ -33,14 +33,24 @@ import RowCountLabel from 'src/components/RowCountLabel';
 import { usePermissions } from 'src/hooks/usePermissions';
 import DownloadDropdown from 'src/components/Chart/DrillDetail/DownloadDropdown';
 import { TableControlsProps } from '../types';
+import getBootstrapData from 'src/utils/getBootstrapData';
 
-export const ROW_LIMIT_OPTIONS = [
+
+
+const DEFAULT_ROW_LIMIT_OPTIONS = [
   { value: 100, label: '100 rows' },
   { value: 500, label: '500 rows' },
   { value: 1000, label: '1k rows' },
   { value: 5000, label: '5k rows' },
   { value: 10000, label: '10k rows' },
 ];
+
+const conf = getBootstrapData()?.common?.conf;
+
+export const ROW_LIMIT_OPTIONS =
+  (conf?.DATA_TABLE_ROW_LIMIT_OPTIONS as { value: number; label: string }[]) ??
+  DEFAULT_ROW_LIMIT_OPTIONS;
+
 
 export const TableControlsWrapper = styled.div`
   ${({ theme }) => `

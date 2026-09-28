@@ -68,6 +68,8 @@ import { datasetLabel } from 'src/features/semanticLayers/label';
 import { formatSelectOptions } from 'src/explore/exploreUtils';
 import { TIME_FILTER_LABELS } from './constants';
 import { StyledColumnOption } from './components/optionRenderers';
+import getBootstrapData from 'src/utils/getBootstrapData';
+
 
 interface Datasource {
   columns: Column[];
@@ -109,7 +111,14 @@ export const D3_FORMAT_OPTIONS = [
   ['DURATION_SUB', t('Duration in ms (100.40008 => 100ms 400µs 80ns)')],
 ];
 
-const ROW_LIMIT_OPTIONS = [10, 50, 100, 250, 500, 1000, 5000, 10000, 50000];
+
+const bootstrapConf = getBootstrapData()?.common?.conf;
+const DEFAULT_ROW_LIMIT_OPTIONS = [10, 50, 100, 250, 500, 1000, 5000, 10000];
+
+
+const ROW_LIMIT_OPTIONS =
+  (bootstrapConf?.ROW_LIMIT_OPTIONS as number[]) ?? DEFAULT_ROW_LIMIT_OPTIONS;
+
 
 const SERIES_LIMITS = [5, 10, 25, 50, 100, 500];
 
@@ -131,7 +140,7 @@ const timeColumnOption = {
   column_name: '__timestamp',
   description: t(
     'A reference to the [Time] configuration, taking granularity into ' +
-      'account',
+    'account',
   ),
 };
 
@@ -144,7 +153,7 @@ const groupByControl = {
   includeTime: false,
   description: t(
     'One or many columns to group by. High cardinality groupings should include a series limit ' +
-      'to limit the number of fetched and rendered series.',
+    'to limit the number of fetched and rendered series.',
   ),
   optionRenderer: (c: Column) => <StyledColumnOption column={c} showType />,
   valueKey: 'column_name',
@@ -305,8 +314,8 @@ export const controls = {
     ],
     description: t(
       'The time granularity for the visualization. Note that you ' +
-        'can type and use simple natural language as in `10 seconds`,' +
-        '`1 day` or `56 weeks`',
+      'can type and use simple natural language as in `10 seconds`,' +
+      '`1 day` or `56 weeks`',
     ),
   },
 
@@ -315,10 +324,10 @@ export const controls = {
     label: TIME_FILTER_LABELS.granularity_sqla,
     description: t(
       'The time column for the visualization. Note that you ' +
-        'can define arbitrary expression that return a DATETIME ' +
-        'column in the table. Also note that the ' +
-        'filter below is applied against this column or ' +
-        'expression',
+      'can define arbitrary expression that return a DATETIME ' +
+      'column in the table. Also note that the ' +
+      'filter below is applied against this column or ' +
+      'expression',
     ),
     clearable: false,
     optionRenderer: (c: Column) => <StyledColumnOption column={c} showType />,
@@ -344,10 +353,10 @@ export const controls = {
     default: 'P1D',
     description: t(
       'The time granularity for the visualization. This ' +
-        'applies a date transformation to alter ' +
-        'your time column and defines a new time granularity. ' +
-        'The options here are defined on a per database ' +
-        'engine basis in the Superset source code.',
+      'applies a date transformation to alter ' +
+      'your time column and defines a new time granularity. ' +
+      'The options here are defined on a per database ' +
+      'engine basis in the Superset source code.',
     ),
     mapStateToProps: (state: ControlState) => ({
       choices: state.datasource ? state.datasource.time_grain_sqla : null,
@@ -361,11 +370,11 @@ export const controls = {
     default: t('No filter'), // this value is translated, but the backend wouldn't understand a translated value?
     description: t(
       'The time range for the visualization. All relative times, e.g. "Last month", ' +
-        '"Last 7 days", "now", etc. are evaluated on the server using the server\'s ' +
-        'local time (sans timezone). All tooltips and placeholder times are expressed ' +
-        'in UTC (sans timezone). The timestamps are then evaluated by the database ' +
-        "using the engine's local timezone. Note one can explicitly set the timezone " +
-        'per the ISO 8601 format if specifying either the start and/or end time.',
+      '"Last 7 days", "now", etc. are evaluated on the server using the server\'s ' +
+      'local time (sans timezone). All tooltips and placeholder times are expressed ' +
+      'in UTC (sans timezone). The timestamps are then evaluated by the database ' +
+      "using the engine's local timezone. Note one can explicitly set the timezone " +
+      'per the ISO 8601 format if specifying either the start and/or end time.',
     ),
   },
 
@@ -388,9 +397,9 @@ export const controls = {
     clearable: true,
     description: t(
       'Limits the number of series that get displayed. A joined subquery (or an extra phase ' +
-        'where subqueries are not supported) is applied to limit the number of series that get ' +
-        'fetched and rendered. This feature is useful when grouping by high cardinality ' +
-        'column(s) though does increase the query complexity and cost.',
+      'where subqueries are not supported) is applied to limit the number of series that get ' +
+      'fetched and rendered. This feature is useful when grouping by high cardinality ' +
+      'column(s) though does increase the query complexity and cost.',
     ),
   },
 
@@ -401,7 +410,7 @@ export const controls = {
     clearable: true,
     description: t(
       'Metric used to define how the top series are sorted if a series or row limit is present. ' +
-        'If undefined reverts to the first metric (where appropriate).',
+      'If undefined reverts to the first metric (where appropriate).',
     ),
     mapStateToProps: (state: ControlState) => ({
       columns: state.datasource ? state.datasource.columns : [],
@@ -417,8 +426,8 @@ export const controls = {
     default: null,
     description: t(
       'Defines the grouping of entities. ' +
-        'Each series is shown as a specific color on the chart and ' +
-        'has a legend toggle',
+      'Each series is shown as a specific color on the chart and ' +
+      'has a legend toggle',
     ),
   },
 
@@ -465,9 +474,9 @@ export const controls = {
       return {
         warning: showWarning
           ? t(
-              'When `Calculation type` is set to "Percentage change", the Y ' +
-                'Axis Format is forced to `.1%`',
-            )
+            'When `Calculation type` is set to "Percentage change", the Y ' +
+            'Axis Format is forced to `.1%`',
+          )
           : null,
         disabled: showWarning,
       };

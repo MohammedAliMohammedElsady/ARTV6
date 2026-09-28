@@ -86,7 +86,9 @@ export const propertyComparator =
     const propertyA = a[property as keyof CustomLabeledValue];
     const propertyB = b[property as keyof CustomLabeledValue];
     if (typeof propertyA === 'string' && typeof propertyB === 'string') {
-      return propertyA.localeCompare(propertyB);
+      // Use numeric:true so strings with embedded numbers sort naturally,
+      // e.g. "1k" < "5k" < "10k" < "100k" instead of "1k","10k","100k","5k".
+      return propertyA.localeCompare(propertyB, undefined, { numeric: true });
     }
     if (typeof propertyA === 'number' && typeof propertyB === 'number') {
       return propertyA - propertyB;
@@ -103,7 +105,11 @@ export const propertyComparator =
       if (propertyA > propertyB) return 1;
       return 0;
     }
-    return String(propertyA).localeCompare(String(propertyB)); // fallback to string comparison
+    // numeric:true applies here too for mixed/unknown types that stringify
+    // to values like "1k", "5k", "10k".
+    return String(propertyA).localeCompare(String(propertyB), undefined, {
+      numeric: true,
+    });
   };
 
 export const sortSelectedFirstHelper = (
