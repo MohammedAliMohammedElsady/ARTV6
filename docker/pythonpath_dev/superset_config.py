@@ -74,7 +74,7 @@ SQLALCHEMY_EXAMPLES_URI = os.getenv(
         f"{EXAMPLES_HOST}:{EXAMPLES_PORT}/{EXAMPLES_DB}"
     ),
 )
-
+TABLE_VIZ_MAX_ROW_SERVER=50000000
 
 REDIS_HOST = os.getenv("REDIS_HOST", "ARTV6_cache")
 REDIS_PORT = os.getenv("REDIS_PORT", "6379")
@@ -196,4 +196,50 @@ PATH_KEY = os.environ.get('PATH_KEY', "ART-DI-SRV.datagearbi.dom.key")
 PATH_VERIFY = os.environ.get('PATH_VERIFY', "datagearbi-DC-01-CA.cer")
 
 CUSTOM_SECURITY_MANAGER = CustomSecurityManager
- 
+
+# Webserver / gunicorn worker timeout — also exported as env var in .env
+_timeout = int(os.getenv("SUPERSET_WEBSERVER_TIMEOUT", "600"))
+SUPERSET_WEBSERVER_TIMEOUT = _timeout
+
+# Timeout for chart data queries (not SQL Lab). This is the critical one
+# that controls the "timeout after N seconds" error in chart visualization.
+QUERY_TIMEOUT = int(os.getenv("SUPERSET_QUERY_TIMEOUT", "600"))
+
+# Timeout for synchronous SQL Lab queries
+SQLLAB_TIMEOUT = _timeout
+
+# SQLAlchemy connection pool settings
+SQLALCHEMY_ENGINE_OPTIONS = {
+    "pool_timeout": _timeout,
+    "pool_recycle": 3600,
+    "pool_pre_ping": True,
+}
+
+
+
+
+
+
+
+# Server and client pagination page size options for Table charts
+TABLE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500,]
+TABLE_SERVER_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500,]
+
+
+# Row limit options for Table charts control panel
+ROW_LIMIT_OPTIONS_TABLE = [
+    10, 50, 100, 250, 500, 1000, 5000, 10000, 50000, 100000, 150000, 200000,
+    250000, 300000, 350000, 400000, 450000, 500000,
+]
+# General chart row and series limits for Explore control panel
+ROW_LIMIT_OPTIONS = [10, 50, 100, 250, 500, 1000, 5000, 10000, 50000, 100000]# Row limit options for the Data Preview / Samples pane in Explore
+DATA_TABLE_ROW_LIMIT_OPTIONS = [
+    {"value": 100, "label": "100 rows"},
+    {"value": 500, "label": "500 rows"},
+    {"value": 1000, "label": "1k rows"},
+    {"value": 5000, "label": "5k rows"},
+    {"value": 10000, "label": "10k rows"},
+    {"value": 50000, "label": "50k rows"},
+    {"value": 100000, "label": "100k rows"},
+]
+
