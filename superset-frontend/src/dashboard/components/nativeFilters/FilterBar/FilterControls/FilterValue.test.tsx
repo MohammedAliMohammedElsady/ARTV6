@@ -186,6 +186,16 @@ test('renders error state when API call fails', async () => {
   expect(await screen.findByText('Network error')).toBeInTheDocument();
 });
 
+test('does not fetch filter values for the equals match type', async () => {
+  renderFilterValue({
+    filter: createMockFilter({ controlValues: { operatorType: 'equals' } }),
+  });
+
+  expect(await screen.findByTestId('mock-super-chart')).toBeInTheDocument();
+  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  expect(mockRequestChartData).not.toHaveBeenCalled();
+});
+
 test('does not fetch data when filter has not been in view', () => {
   renderFilterValue({ inView: false });
 

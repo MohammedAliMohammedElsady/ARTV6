@@ -1039,6 +1039,11 @@ class Database(CoreDatabase, AuditMixinNullable, ImportExportMixin):  # pylint: 
         is_virtual: bool = False,
     ) -> str:
         with self.get_sqla_engine(catalog=catalog, schema=schema) as engine:
+            # Some dialects (e.g. MSSQL) require an ORDER BY when a LIMIT/OFFSET
+            # clause is present. Let the engine spec patch the query before it hits
+            # the SQLAlchemy compiler so we never get a CompileError.
+            if hasattr(self.db_engine_spec, "ensure_order_by_for_limit"):
+                qry = self.db_engine_spec.ensure_order_by_for_limit(qry)
             sql = str(qry.compile(engine, compile_kwargs={"literal_binds": True}))
 
             # pylint: disable=protected-access

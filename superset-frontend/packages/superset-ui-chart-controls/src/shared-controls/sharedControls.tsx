@@ -45,6 +45,7 @@ import {
   NO_TIME_RANGE,
   validateMaxValue,
   getColumnLabel,
+  getBootstrapDataFromDocument
 } from '@superset-ui/core';
 
 import {
@@ -87,12 +88,28 @@ import {
 } from './dndControls';
 import { matrixifyControls } from './matrixifyControls';
 
+
 const categoricalSchemeRegistry = getCategoricalSchemeRegistry();
 const sequentialSchemeRegistry = getSequentialSchemeRegistry();
 
 export const PRIMARY_COLOR = { r: 0, g: 122, b: 135, a: 1 };
 
-const ROW_LIMIT_OPTIONS = [10, 50, 100, 250, 500, 1000, 5000, 10000, 50000];
+
+const getBootstrapConf = (): JsonObject | undefined => {
+  const bootstrapData = getBootstrapDataFromDocument() as {
+    common?: { conf?: JsonObject };
+  } | undefined;
+  return bootstrapData?.common?.conf;
+};
+const conf = getBootstrapConf();
+
+const DEFAULT_ROW_LIMIT_OPTIONS = [10, 50, 100, 250, 500, 1000, 5000, 10000];
+
+
+const ROW_LIMIT_OPTIONS =
+  (conf?.ROW_LIMIT_OPTIONS as number[]) ?? DEFAULT_ROW_LIMIT_OPTIONS;
+
+
 const SERIES_LIMITS = [5, 10, 25, 50, 100, 500];
 
 const appContainer = document.getElementById('app');
@@ -174,8 +191,8 @@ const granularity: SharedControlConfig<'SelectControl'> = {
   ],
   description: t(
     'The time granularity for the visualization. Note that you ' +
-      'can type and use simple natural language as in `10 seconds`, ' +
-      '`1 day` or `56 weeks`',
+    'can type and use simple natural language as in `10 seconds`, ' +
+    '`1 day` or `56 weeks`',
   ),
   sortComparator: () => 0, // Disable frontend sorting to preserve backend order
 };
@@ -198,8 +215,8 @@ const time_grain_sqla: SharedControlConfig<'SelectControl'> = {
   },
   description: t(
     'Select a time grain for the visualization. The ' +
-      'grain is the time interval represented by a ' +
-      'single point on the chart.',
+    'grain is the time interval represented by a ' +
+    'single point on the chart.',
   ),
   mapStateToProps: ({ datasource }) => ({
     choices: (datasource as Dataset)?.time_grain_sqla || [],
@@ -215,11 +232,11 @@ const time_range: SharedControlConfig<'DateFilterControl'> = {
   default: NO_TIME_RANGE, // this value is an empty filter constant so shouldn't translate it.
   description: t(
     'This control filters the whole chart based on the selected time range. All relative times, e.g. "Last month", ' +
-      '"Last 7 days", "now", etc. are evaluated on the server using the server\'s ' +
-      'local time (sans timezone). All tooltips and placeholder times are expressed ' +
-      'in UTC (sans timezone). The timestamps are then evaluated by the database ' +
-      "using the engine's local timezone. Note one can explicitly set the timezone " +
-      'per the ISO 8601 format if specifying either the start and/or end time.',
+    '"Last 7 days", "now", etc. are evaluated on the server using the server\'s ' +
+    'local time (sans timezone). All tooltips and placeholder times are expressed ' +
+    'in UTC (sans timezone). The timestamps are then evaluated by the database ' +
+    "using the engine's local timezone. Note one can explicitly set the timezone " +
+    'per the ISO 8601 format if specifying either the start and/or end time.',
   ),
 };
 
@@ -264,9 +281,9 @@ const limit: SharedControlConfig<'SelectControl'> = {
   clearable: true,
   description: t(
     'Limits the number of series that get displayed. A joined subquery (or an extra phase ' +
-      'where subqueries are not supported) is applied to limit the number of series that get ' +
-      'fetched and rendered. This feature is useful when grouping by high cardinality ' +
-      'column(s) though does increase the query complexity and cost.',
+    'where subqueries are not supported) is applied to limit the number of series that get ' +
+    'fetched and rendered. This feature is useful when grouping by high cardinality ' +
+    'column(s) though does increase the query complexity and cost.',
   ),
 };
 
@@ -279,47 +296,47 @@ const series_limit: SharedControlConfig<'SelectControl'> = {
   choices: formatSelectOptions(SERIES_LIMITS),
   description: t(
     'Limits the number of series that get displayed. A joined subquery (or an extra phase ' +
-      'where subqueries are not supported) is applied to limit the number of series that get ' +
-      'fetched and rendered. This feature is useful when grouping by high cardinality ' +
-      'column(s) though does increase the query complexity and cost.',
+    'where subqueries are not supported) is applied to limit the number of series that get ' +
+    'fetched and rendered. This feature is useful when grouping by high cardinality ' +
+    'column(s) though does increase the query complexity and cost.',
   ),
 };
 
 const group_others_when_limit_reached: SharedControlConfig<'CheckboxControl'> =
-  {
-    type: 'CheckboxControl',
-    label: t('Group remaining as "Others"'),
-    default: false,
-    description: t(
-      'Groups remaining series into an "Others" category when series limit is reached. ' +
-        'This prevents incomplete time series data from being displayed.',
-    ),
-    visibility: ({ form_data }: { form_data: any }) =>
-      Boolean(form_data?.limit || form_data?.series_limit),
-  };
+{
+  type: 'CheckboxControl',
+  label: t('Group remaining as "Others"'),
+  default: false,
+  description: t(
+    'Groups remaining series into an "Others" category when series limit is reached. ' +
+    'This prevents incomplete time series data from being displayed.',
+  ),
+  visibility: ({ form_data }: { form_data: any }) =>
+    Boolean(form_data?.limit || form_data?.series_limit),
+};
 
 const y_axis_format: SharedControlConfig<'SelectControl', SelectDefaultOption> =
-  {
-    type: 'SelectControl',
-    freeForm: true,
-    label: t('Y Axis Format'),
-    renderTrigger: true,
-    default: DEFAULT_NUMBER_FORMAT,
-    choices: D3_FORMAT_OPTIONS,
-    description: D3_FORMAT_DOCS,
-    tokenSeparators: ['\n', '\t', ';'],
-    filterOption: ({ data: option }, search) =>
-      option.label.includes(search) || option.value.includes(search),
-    mapStateToProps: state => {
-      const isPercentage =
-        state.controls?.comparison_type?.value === ComparisonType.Percentage;
-      return {
-        choices: isPercentage
-          ? D3_FORMAT_OPTIONS.filter(option => option[0].includes('%'))
-          : D3_FORMAT_OPTIONS,
-      };
-    },
-  };
+{
+  type: 'SelectControl',
+  freeForm: true,
+  label: t('Y Axis Format'),
+  renderTrigger: true,
+  default: DEFAULT_NUMBER_FORMAT,
+  choices: D3_FORMAT_OPTIONS,
+  description: D3_FORMAT_DOCS,
+  tokenSeparators: ['\n', '\t', ';'],
+  filterOption: ({ data: option }, search) =>
+    option.label.includes(search) || option.value.includes(search),
+  mapStateToProps: state => {
+    const isPercentage =
+      state.controls?.comparison_type?.value === ComparisonType.Percentage;
+    return {
+      choices: isPercentage
+        ? D3_FORMAT_OPTIONS.filter(option => option[0].includes('%'))
+        : D3_FORMAT_OPTIONS,
+    };
+  },
+};
 
 const currency_format: SharedControlConfig<'CurrencyControl'> = {
   type: 'CurrencyControl',
@@ -458,9 +475,9 @@ const echart_options: SharedControlConfig<'JSEditorControl'> = {
   label: t('ECharts Options (JS object literals)'),
   description: t(
     'A JavaScript object that adheres to the ECharts options specification, ' +
-      'overriding other control options with higher precedence. ' +
-      '(i.e. { title: { text: "My Chart" }, tooltip: { trigger: "item" } }). ' +
-      'Details: https://echarts.apache.org/en/option.html. ',
+    'overriding other control options with higher precedence. ' +
+    '(i.e. { title: { text: "My Chart" }, tooltip: { trigger: "item" } }). ' +
+    'Details: https://echarts.apache.org/en/option.html. ',
   ),
   default: '{}',
   renderTrigger: true,

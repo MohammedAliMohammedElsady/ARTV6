@@ -99,6 +99,8 @@ def update_api_docs() -> None:
         raise click.ClickException(f"No {api_version} API found to document")
 
     click.secho("Generating openapi.json", fg="green")
+    # The docs folder is not shipped in the Docker image; create it if missing
+    os.makedirs(os.path.dirname(openapi_json), exist_ok=True)
     with open(openapi_json, "w") as outfile:
         json.dump(api_spec.to_dict(), outfile, sort_keys=True, indent=2)
         outfile.write("\n")

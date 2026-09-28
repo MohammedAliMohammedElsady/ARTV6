@@ -1768,6 +1768,11 @@ const FiltersConfigForm = (
                                       ? [
                                           {
                                             value:
+                                              SelectFilterOperatorType.Equals,
+                                            label: t('Exact match (=)'),
+                                          },
+                                          {
+                                            value:
                                               SelectFilterOperatorType.Contains,
                                             label: t(
                                               'Contains text (ILIKE %x%)',

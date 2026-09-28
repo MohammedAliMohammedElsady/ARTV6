@@ -58,6 +58,7 @@ import {
   unsetHoveredChartCustomization,
 } from 'src/dashboard/actions/nativeFilters';
 import { RESPONSIVE_WIDTH } from 'src/filters/components/common';
+import { SelectFilterOperatorType } from 'src/filters/components/Select/types';
 import { dispatchHoverAction, dispatchFocusAction } from './utils';
 import { FilterControlProps } from './types';
 import { getFormData } from '../../utils';
@@ -170,8 +171,19 @@ const FilterValue: FC<FilterValueProps> = ({
     column: { name?: string };
   }> = target || {};
   const groupby = column?.name;
+  // Text-input match types (=, ILIKE) never show a list of values, so the
+  // distinct-values query is skipped: on large tables it is the slow part.
+  const operatorType = isCustomization
+    ? undefined
+    : filter.controlValues?.operatorType;
+  const isTextInputFilter =
+    filterType === 'filter_select' &&
+    !!operatorType &&
+    operatorType !== SelectFilterOperatorType.Exact;
   const hasDataSource = !!datasetId;
-  const [isLoading, setIsLoading] = useState<boolean>(hasDataSource);
+  const [isLoading, setIsLoading] = useState<boolean>(
+    hasDataSource && !isTextInputFilter,
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const dispatch = useDispatch();
 
@@ -278,6 +290,11 @@ const FilterValue: FC<FilterValueProps> = ({
       if (!hasDataSource) {
         return;
       }
+      if (isTextInputFilter) {
+        setState([]);
+        handleFilterLoadFinish();
+        return;
+      }
       setIsRefreshing(true);
       requestChartDataResolved({
         formData: newFormData,
@@ -305,6 +322,7 @@ const FilterValue: FC<FilterValueProps> = ({
     handleFilterLoadFinish,
     filter,
     hasDataSource,
+    isTextInputFilter,
     isRefreshing,
     shouldRefresh,
     dataMaskSelected,

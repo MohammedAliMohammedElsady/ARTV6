@@ -23,24 +23,35 @@
 import logging
 import os
 import sys
-
+from superset.security.custom_auth import CustomSecurityManager
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
+from sqlalchemy.dialects import registry
+# Same decrypt used by the ARTV6_db_secrets service for Postgres (DATABASE_KEY / Jasypt)
+from decrypt_db_secrets import decrypt
+
+
+
 
 logger = logging.getLogger()
 
+
+SUPERSET_LOAD_EXAMPLES='no'
+
 DATABASE_DIALECT = os.getenv("DATABASE_DIALECT")
 DATABASE_USER = os.getenv("DATABASE_USER")
-DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD")
+DATABASE_PASSWORD = decrypt("DATABASE_PASSWORD")
 DATABASE_HOST = os.getenv("DATABASE_HOST")
 DATABASE_PORT = os.getenv("DATABASE_PORT")
 DATABASE_DB = os.getenv("DATABASE_DB")
 
 EXAMPLES_USER = os.getenv("EXAMPLES_USER")
-EXAMPLES_PASSWORD = os.getenv("EXAMPLES_PASSWORD")
+EXAMPLES_PASSWORD = decrypt("EXAMPLES_PASSWORD")
 EXAMPLES_HOST = os.getenv("EXAMPLES_HOST")
 EXAMPLES_PORT = os.getenv("EXAMPLES_PORT")
 EXAMPLES_DB = os.getenv("EXAMPLES_DB")
+
+SQLALCHEMY_ENCRYPTED_FIELD_ENGINE = 'aes'
 
 # The SQLAlchemy connection string.
 SQLALCHEMY_DATABASE_URI = (
@@ -48,7 +59,11 @@ SQLALCHEMY_DATABASE_URI = (
     f"{DATABASE_USER}:{DATABASE_PASSWORD}@"
     f"{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_DB}"
 )
-
+# Never log the full URI: it contains the decrypted password
+logger.info(
+    "Metadata DB: %s://%s@%s:%s/%s",
+    DATABASE_DIALECT, DATABASE_USER, DATABASE_HOST, DATABASE_PORT, DATABASE_DB,
+)
 # Use environment variable if set, otherwise construct from components
 # This MUST take precedence over any other configuration
 SQLALCHEMY_EXAMPLES_URI = os.getenv(
@@ -59,9 +74,9 @@ SQLALCHEMY_EXAMPLES_URI = os.getenv(
         f"{EXAMPLES_HOST}:{EXAMPLES_PORT}/{EXAMPLES_DB}"
     ),
 )
+TABLE_VIZ_MAX_ROW_SERVER=50000000
 
-
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_HOST = os.getenv("REDIS_HOST", "ARTV6_cache")
 REDIS_PORT = os.getenv("REDIS_PORT", "6379")
 REDIS_CELERY_DB = os.getenv("REDIS_CELERY_DB", "0")
 REDIS_RESULTS_DB = os.getenv("REDIS_RESULTS_DB", "1")
@@ -114,6 +129,10 @@ class CeleryConfig:
 
 CELERY_CONFIG = CeleryConfig
 
+
+
+
+
 FEATURE_FLAGS = {
     "ALERT_REPORTS": True,
     "DATASET_FOLDERS": True,
@@ -121,6 +140,22 @@ FEATURE_FLAGS = {
     "MOBILE_CONSUMPTION_MODE": True,
     "SEMANTIC_LAYERS": True,
 }
+
+registry.register(
+    "oracle", "sqlalchemy.dialects.oracle.oracledb", "OracleDialect_oracledb"
+)
+registry.register("mssql", "sqlalchemy.dialects.mssql.pymssql", "MSDialect_pymssql")
+
+
+PREFERRED_DATABASES = [
+    "PostgreSQL",
+    "Microsoft SQL Server",
+    "Oracle",
+    "MySQL",
+    "Presto",
+    "SQLite",
+]
+
 EXTENSIONS_PATH = "/app/docker/extensions"
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
 # The Docker Compose app service is named "superset" and listens on 8088. Report
@@ -151,16 +186,60 @@ if os.getenv("CYPRESS_CONFIG") == "true":
 
     sys.path.pop(0)
 
-#
-# Optionally import superset_config_docker.py (which will have been included on
-# the PYTHONPATH) in order to allow for local settings to be overridden
-#
-try:
-    import superset_config_docker
-    from superset_config_docker import *  # noqa: F403
+EXTERNAL_AUTH_URL = os.environ.get(
+    'EXTERNAL_AUTH_URL', "https://art-di-srv.datagearbi.dom:9999")
+POST_URL = os.environ.get(
+    'POST_URL', "/dg-userManagement-console/security/signIn")
+BASE_PATH = "/app/superset/security/certs"
+PATH_CRT = os.environ.get('PATH_CRT', "ART-DI-SRV.datagearbi.dom.crt")
+PATH_KEY = os.environ.get('PATH_KEY', "ART-DI-SRV.datagearbi.dom.key")
+PATH_VERIFY = os.environ.get('PATH_VERIFY', "datagearbi-DC-01-CA.cer")
 
-    logger.info(
-        "Loaded your Docker configuration at [%s]", superset_config_docker.__file__
-    )
-except ImportError:
-    logger.info("Using default Docker config...")
+CUSTOM_SECURITY_MANAGER = CustomSecurityManager
+
+# Webserver / gunicorn worker timeout — also exported as env var in .env
+_timeout = int(os.getenv("SUPERSET_WEBSERVER_TIMEOUT", "600"))
+SUPERSET_WEBSERVER_TIMEOUT = _timeout
+
+# Timeout for chart data queries (not SQL Lab). This is the critical one
+# that controls the "timeout after N seconds" error in chart visualization.
+QUERY_TIMEOUT = int(os.getenv("SUPERSET_QUERY_TIMEOUT", "600"))
+
+# Timeout for synchronous SQL Lab queries
+SQLLAB_TIMEOUT = _timeout
+
+# SQLAlchemy connection pool settings
+SQLALCHEMY_ENGINE_OPTIONS = {
+    "pool_timeout": _timeout,
+    "pool_recycle": 3600,
+    "pool_pre_ping": True,
+}
+
+
+
+
+
+
+
+# Server and client pagination page size options for Table charts
+TABLE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500,]
+TABLE_SERVER_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500,]
+
+
+# Row limit options for Table charts control panel
+ROW_LIMIT_OPTIONS_TABLE = [
+    10, 50, 100, 250, 500, 1000, 5000, 10000, 50000, 100000, 150000, 200000,
+    250000, 300000, 350000, 400000, 450000, 500000,
+]
+# General chart row and series limits for Explore control panel
+ROW_LIMIT_OPTIONS = [10, 50, 100, 250, 500, 1000, 5000, 10000, 50000, 100000]# Row limit options for the Data Preview / Samples pane in Explore
+DATA_TABLE_ROW_LIMIT_OPTIONS = [
+    {"value": 100, "label": "100 rows"},
+    {"value": 500, "label": "500 rows"},
+    {"value": 1000, "label": "1k rows"},
+    {"value": 5000, "label": "5k rows"},
+    {"value": 10000, "label": "10k rows"},
+    {"value": 50000, "label": "50k rows"},
+    {"value": 100000, "label": "100k rows"},
+]
+

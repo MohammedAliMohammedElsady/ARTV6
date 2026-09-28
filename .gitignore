@@ -71,8 +71,14 @@ superset-websocket/config.json
 node_modules
 npm-debug.log*
 superset/static/*
+!superset/static/assets/
 superset/static/assets/*
 !superset/static/assets/.gitkeep
+# Custom branding images (tracked)
+!superset/static/assets/images/
+superset/static/assets/images/*
+!superset/static/assets/images/LOGO.png
+!superset/static/assets/images/fav_icon_data_gear.png
 superset/static/uploads/*
 !superset/static/uploads/.gitkeep
 yarn-error.log

@@ -120,7 +120,7 @@ PACKAGE_JSON_FILE = str(files("superset") / "static/assets/package.json")
 #     "type": "image/png"
 #     "rel": "icon"
 # },
-FAVICONS = [{"href": "/static/assets/images/favicon.png"}]
+FAVICONS = [{"href": "/static/assets/images/fav_icon_data_gear.png"}]
 PDF_COMPRESSION_LEVEL: Literal["NONE", "FAST", "MEDIUM", "SLOW"] = "MEDIUM"
 
 
@@ -175,7 +175,7 @@ EXPOSE_BUILD_DETAILS_TO_USERS = utils.cast_to_boolean(
 DEFAULT_VIZ_TYPE = "table"
 
 # default row limit when requesting chart data
-ROW_LIMIT = 50000
+ROW_LIMIT = 50000000
 # default row limit when requesting samples from datasource in explore view
 SAMPLES_ROW_LIMIT = 1000
 # default row limit for native filters
@@ -216,7 +216,7 @@ DEFAULT_TIME_FILTER = utils.NO_TIME_RANGE
 # [load balancer / proxy / envoy / kong / ...] timeout settings.
 # You should also make sure to configure your WSGI server
 # (gunicorn, nginx, apache, ...) timeout setting to be <= to this setting
-SUPERSET_WEBSERVER_TIMEOUT = int(timedelta(minutes=1).total_seconds())
+SUPERSET_WEBSERVER_TIMEOUT = int(timedelta(minutes=6).total_seconds())
 
 # this 2 settings are used by dashboard period force refresh feature
 # When user choose auto force refresh frequency
@@ -292,7 +292,11 @@ SQLALCHEMY_DATABASE_URI = (
 # `SQLALCHEMY_ENGINE_OPTIONS = {"isolation_level": "READ COMMITTED"}`
 # Also note that we recommend READ COMMITTED for regular operation.
 # Find out more here https://flask-sqlalchemy.palletsprojects.com/en/3.1.x/config/
-SQLALCHEMY_ENGINE_OPTIONS = {}
+SQLALCHEMY_ENGINE_OPTIONS = {
+    "pool_timeout": 600,
+    "pool_recycle": 600,
+    "pool_pre_ping": True,
+}
 
 # In order to hook up a custom password store for all SQLALCHEMY connections
 # implement a function that takes a single argument of type 'sqla.engine.url',
@@ -446,13 +450,13 @@ AUTH_PASSWORD_COMMON_BLOCKLIST: list[str] = []
 # GLOBALS FOR APP Builder
 # ------------------------------
 # Uncomment to setup Your App name
-APP_NAME = "Superset"
+APP_NAME = "Data Gear"
 
 # Specify the App icon
 # NOTE: This variable is used to populate THEME_DEFAULT. If you override this in
 # superset_config.py, you must also override THEME_DEFAULT to see the change,
 # or set THEME_DEFAULT["token"]["brandLogoUrl"] directly.
-APP_ICON = "/static/assets/images/superset-logo-horiz.png"
+APP_ICON = "/static/assets/images/LOGO.png"
 
 # Specify where clicking the logo would take the user
 # Default value of None will take you to '/superset/welcome'
@@ -740,9 +744,6 @@ DEFAULT_FEATURE_FLAGS: dict[str, bool] = {
     # Enable Table V2 time comparison feature
     # @lifecycle: development
     "TABLE_V2_TIME_COMPARISON_ENABLED": False,
-    # Enables the tagging system for organizing assets
-    # @lifecycle: development
-    "TAGGING_SYSTEM": False,
     # Enables the version history panel on Explore and Dashboard pages.
     # History only accrues while ``ENABLE_VERSIONING_CAPTURE`` is also on;
     # with capture off the panel renders empty or stale history, so the two
@@ -826,6 +827,9 @@ DEFAULT_FEATURE_FLAGS: dict[str, bool] = {
     # @lifecycle: testing
     # @docs: https://superset.apache.org/docs/configuration/setup-ssh-tunneling
     "SSH_TUNNELING": False,
+    # Enables the tagging system for organizing assets
+    # @lifecycle: testing
+    "TAGGING_SYSTEM": True,
     # Enable AWS IAM authentication for database connections (Aurora, Redshift).
     # Allows cross-account role assumption via STS AssumeRole.
     # Security note: When enabled, ensure Superset's IAM role has restricted
@@ -1123,7 +1127,7 @@ _THEME_DEFAULT_BASE: Theme = {
         # Brand
         # Application name for window titles
         "brandAppName": APP_NAME,
-        "brandLogoAlt": "Apache Superset",
+        "brandLogoAlt": "Data Gear",
         "brandLogoUrl": APP_ICON,
         "brandLogoMargin": "18px 0",
         "brandLogoHref": LOGO_TARGET_PATH or "/",
@@ -1671,14 +1675,14 @@ QUERY_LOGGER = None
 MAPBOX_API_KEY = os.environ.get("MAPBOX_API_KEY", "")
 
 # Maximum number of rows returned for any analytical database query
-SQL_MAX_ROW = 100000
+SQL_MAX_ROW = 100000000
 
 # Maximum number of forecast periods accepted by the Prophet post-processing
 # operation. Bounds resource usage when predicting into the future.
 MAX_PROPHET_PERIODS = 10000
 
 # Maximum number of rows for any query with Server Pagination in Table Viz type
-TABLE_VIZ_MAX_ROW_SERVER = 500000
+TABLE_VIZ_MAX_ROW_SERVER = 50000000
 
 
 # Maximum number of rows displayed in SQL Lab UI
@@ -1898,7 +1902,7 @@ HTTP_HEADERS: dict[str, Any] = {}
 DEFAULT_DB_ID = None
 
 # Timeout duration for SQL Lab synchronous queries
-SQLLAB_TIMEOUT = int(timedelta(seconds=30).total_seconds())
+SQLLAB_TIMEOUT = int(timedelta(seconds=600).total_seconds())
 
 # BigQuery max fetch size in MB (limits memory usage when fetching large results)
 BQ_FETCH_MAX_MB = 200
@@ -2545,6 +2549,9 @@ ALERT_REPORTS_QUERY_EXECUTION_MAX_TRIES = 1
 # which leaves the report schedule stuck in the WORKING state. Set to None to
 # disable (not recommended).
 ALERT_REPORTS_CSV_REQUEST_TIMEOUT = 60
+# Opt in to at most one transient CSV/Excel transport retry within the original
+# request timeout and report execution budget. Does not retry unbounded requests.
+ALERT_REPORTS_CSV_REQUEST_RETRY = False
 # Custom width for screenshots
 ALERT_REPORTS_MIN_CUSTOM_SCREENSHOT_WIDTH = 600
 ALERT_REPORTS_MAX_CUSTOM_SCREENSHOT_WIDTH = 2400
@@ -3029,6 +3036,9 @@ GUEST_ROLE_NAME = "Public"
 GUEST_TOKEN_JWT_SECRET = CHANGE_ME_GUEST_TOKEN_JWT_SECRET
 GUEST_TOKEN_JWT_ALGO = "HS256"  # noqa: S105
 GUEST_TOKEN_HEADER_NAME = "X-GuestToken"  # noqa: S105
+# Diagnostic budget for UTF-8 bytes of "header-name: encoded-token\r\n".
+# None disables size warnings, not issuance or authentication. Deployment-specific.
+GUEST_TOKEN_HEADER_MAX_BYTES: int | None = None
 GUEST_TOKEN_JWT_EXP_SECONDS = 300  # 5 minutes
 # Audience for the Superset guest token used in embedded mode.
 # Can be a string or a callable. Defaults to WEBDRIVER_BASEURL.
@@ -3369,6 +3379,30 @@ DISTRIBUTED_LOCK_DEFAULT_TTL = 30
 
 # Channel prefix for task abort pub/sub messages
 TASKS_ABORT_CHANNEL_PREFIX = "gtf:abort:"
+
+
+
+# Server and client pagination page size options for Table charts
+TABLE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500,]
+TABLE_SERVER_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500,]
+
+
+# Row limit options for Table charts control panel
+ROW_LIMIT_OPTIONS_TABLE = [
+    10, 50, 100, 250, 500, 1000, 5000, 10000, 50000, 100000, 150000, 200000,
+    250000, 300000, 350000, 400000, 450000, 500000,
+]
+# General chart row and series limits for Explore control panel
+ROW_LIMIT_OPTIONS = [10, 50, 100, 250, 500, 1000, 5000, 10000, 50000, 100000]# Row limit options for the Data Preview / Samples pane in Explore
+DATA_TABLE_ROW_LIMIT_OPTIONS = [
+    {"value": 100, "label": "100 rows"},
+    {"value": 500, "label": "500 rows"},
+    {"value": 1000, "label": "1k rows"},
+    {"value": 5000, "label": "5k rows"},
+    {"value": 10000, "label": "10k rows"},
+    {"value": 50000, "label": "50k rows"},
+    {"value": 100000, "label": "100k rows"},
+]
 
 # -------------------------------------------------------------------
 # *                WARNING:  STOP EDITING  HERE                    *
