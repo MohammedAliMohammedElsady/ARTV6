@@ -175,7 +175,7 @@ EXPOSE_BUILD_DETAILS_TO_USERS = utils.cast_to_boolean(
 DEFAULT_VIZ_TYPE = "table"
 
 # default row limit when requesting chart data
-ROW_LIMIT = 50000
+ROW_LIMIT = 50000000
 # default row limit when requesting samples from datasource in explore view
 SAMPLES_ROW_LIMIT = 1000
 # default row limit for native filters
@@ -1675,14 +1675,14 @@ QUERY_LOGGER = None
 MAPBOX_API_KEY = os.environ.get("MAPBOX_API_KEY", "")
 
 # Maximum number of rows returned for any analytical database query
-SQL_MAX_ROW = 100000
+SQL_MAX_ROW = 100000000
 
 # Maximum number of forecast periods accepted by the Prophet post-processing
 # operation. Bounds resource usage when predicting into the future.
 MAX_PROPHET_PERIODS = 10000
 
 # Maximum number of rows for any query with Server Pagination in Table Viz type
-TABLE_VIZ_MAX_ROW_SERVER = 500000
+TABLE_VIZ_MAX_ROW_SERVER = 50000000
 
 
 # Maximum number of rows displayed in SQL Lab UI
@@ -3379,6 +3379,30 @@ DISTRIBUTED_LOCK_DEFAULT_TTL = 30
 
 # Channel prefix for task abort pub/sub messages
 TASKS_ABORT_CHANNEL_PREFIX = "gtf:abort:"
+
+
+
+# Server and client pagination page size options for Table charts
+TABLE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500,]
+TABLE_SERVER_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500,]
+
+
+# Row limit options for Table charts control panel
+ROW_LIMIT_OPTIONS_TABLE = [
+    10, 50, 100, 250, 500, 1000, 5000, 10000, 50000, 100000, 150000, 200000,
+    250000, 300000, 350000, 400000, 450000, 500000,
+]
+# General chart row and series limits for Explore control panel
+ROW_LIMIT_OPTIONS = [10, 50, 100, 250, 500, 1000, 5000, 10000, 50000, 100000]# Row limit options for the Data Preview / Samples pane in Explore
+DATA_TABLE_ROW_LIMIT_OPTIONS = [
+    {"value": 100, "label": "100 rows"},
+    {"value": 500, "label": "500 rows"},
+    {"value": 1000, "label": "1k rows"},
+    {"value": 5000, "label": "5k rows"},
+    {"value": 10000, "label": "10k rows"},
+    {"value": 50000, "label": "50k rows"},
+    {"value": 100000, "label": "100k rows"},
+]
 
 # -------------------------------------------------------------------
 # *                WARNING:  STOP EDITING  HERE                    *

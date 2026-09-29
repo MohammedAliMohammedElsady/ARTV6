@@ -23,8 +23,10 @@ from re import Pattern
 from typing import Any, Optional
 
 from flask_babel import gettext as __
+from sqlalchemy import literal_column, text
 from sqlalchemy import types
 from sqlalchemy.dialects.mssql.base import SMALLDATETIME
+from sqlalchemy.sql import Select
 
 from superset.constants import TimeGrain
 from superset.db_engine_specs.base import BaseEngineSpec, DatabaseCategory
@@ -195,6 +197,21 @@ class MssqlEngineSpec(BaseEngineSpec):
         return cls.pyodbc_rows_to_tuples(data)
 
     @classmethod
+    def ensure_order_by_for_limit(cls, qry: Select) -> Select:
+        """
+        SQL Server requires ORDER BY when a non-trivial LIMIT (OFFSET/FETCH NEXT)
+        is used. When the query has a row limit but no ORDER BY, inject
+        ORDER BY (SELECT NULL) — the conventional SQL Server no-op sort —
+        so the MSSQL SQLAlchemy compiler never raises CompileError.
+        """
+        # pylint: disable=protected-access
+        has_limit = qry._limit_clause is not None
+        has_order = bool(qry._order_by_clauses)
+        if has_limit and not has_order:
+            qry = qry.order_by(text("(SELECT NULL)"))
+        return qry
+
+    @classmethod
     def extract_error_message(cls, ex: Exception) -> str:
         if str(ex).startswith("(8155,"):
             return (
@@ -202,6 +219,7 @@ class MssqlEngineSpec(BaseEngineSpec):
                 "have an alias on MSSQL. For example: SELECT COUNT(*) AS C1 FROM TABLE1"
             )
         return f"{cls.engine} error: {cls._extract_error_message(ex)}"
+
 
 
 class AzureSynapseSpec(MssqlEngineSpec):

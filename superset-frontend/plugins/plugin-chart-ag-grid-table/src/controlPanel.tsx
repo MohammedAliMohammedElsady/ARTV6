@@ -53,6 +53,8 @@ import {
   validateMaxValue,
   validateServerPagination,
   withLabel,
+  getBootstrapDataFromDocument,
+  JsonObject,
 } from '@superset-ui/core';
 import { GenericDataType } from '@apache-superset/core/common';
 import { isEmpty, last } from 'lodash-es';
@@ -172,8 +174,8 @@ const percentMetricsControl: typeof sharedControls.metrics = {
   label: t('Percentage metrics'),
   description: t(
     'Select one or many metrics to display, that will be displayed in the percentages of total. ' +
-      'Percentage metrics will be calculated only from data within the row limit. ' +
-      'You can use an aggregation function on a column or write custom SQL to create a percentage metric.',
+    'Percentage metrics will be calculated only from data within the row limit. ' +
+    'You can use an aggregation function on a column or write custom SQL to create a percentage metric.',
   ),
   visibility: isAggMode,
   resetOnHide: false,
@@ -198,10 +200,22 @@ const percentMetricsControl: typeof sharedControls.metrics = {
 Options for row limit control
 */
 
-export const ROW_LIMIT_OPTIONS_TABLE = [
+const getBootstrapConf = (): JsonObject | undefined => {
+  const bootstrapData = getBootstrapDataFromDocument() as {
+    common?: { conf?: JsonObject };
+  } | undefined;
+  return bootstrapData?.common?.conf;
+};
+const conf = getBootstrapConf();
+
+const DEFAULT_ROW_LIMIT_OPTIONS_TABLE = [
   10, 50, 100, 250, 500, 1000, 5000, 10000, 50000, 100000, 150000, 200000,
   250000, 300000, 350000, 400000, 450000, 500000,
 ];
+
+export const ROW_LIMIT_OPTIONS_TABLE =
+  (conf?.ROW_LIMIT_OPTIONS_TABLE as number[]) ?? DEFAULT_ROW_LIMIT_OPTIONS_TABLE;
+
 
 const config: ControlPanelConfig = {
   controlPanelSections: [
@@ -510,12 +524,12 @@ const config: ControlPanelConfig = {
               renderTrigger: true,
               description: t(
                 'Aggregation used for the summary row. By default each metric ' +
-                  'keeps its own aggregation; Sum and Average override it for ' +
-                  'the summary row only. The override applies to simple ' +
-                  'metrics (a metric built from custom SQL always keeps its ' +
-                  'own aggregation). Overriding a count or a distinct count ' +
-                  'sums the counted column instead, which fails outright on a ' +
-                  'non-numeric column.',
+                'keeps its own aggregation; Sum and Average override it for ' +
+                'the summary row only. The override applies to simple ' +
+                'metrics (a metric built from custom SQL always keeps its ' +
+                'own aggregation). Overriding a count or a distinct count ' +
+                'sums the counted column instead, which fails outright on a ' +
+                'non-numeric column.',
               ),
               default: 'ORIGINAL',
               clearable: false,
@@ -689,8 +703,8 @@ const config: ControlPanelConfig = {
               default: false,
               description: t(
                 'This will be applied to the whole table. Arrows (↑ and ↓) will be added to ' +
-                  'main columns for increase and decrease. Basic conditional formatting can be ' +
-                  'overwritten by conditional formatting below.',
+                'main columns for increase and decrease. Basic conditional formatting can be ' +
+                'overwritten by conditional formatting below.',
               ),
             },
           },
@@ -712,7 +726,7 @@ const config: ControlPanelConfig = {
                 Boolean(controls?.comparison_color_enabled?.value),
               description: t(
                 'Adds color to the chart symbols based on the positive or ' +
-                  'negative change from the comparison value.',
+                'negative change from the comparison value.',
               ),
             },
           },
@@ -741,11 +755,11 @@ const config: ControlPanelConfig = {
 
                 const extraColorChoices = hasTimeComparison
                   ? [
-                      {
-                        label: t('Trend colors'),
-                        colors: [ColorSchemeEnum.Green, ColorSchemeEnum.Red],
-                      },
-                    ]
+                    {
+                      label: t('Trend colors'),
+                      colors: [ColorSchemeEnum.Green, ColorSchemeEnum.Red],
+                    },
+                  ]
                   : [];
 
                 const chartStatus = chart?.chartStatus;
@@ -754,24 +768,24 @@ const config: ControlPanelConfig = {
                 const numericColumns =
                   Array.isArray(colnames) && Array.isArray(coltypes)
                     ? colnames
-                        .filter(
-                          (colname: string, index: number) =>
-                            coltypes[index] === GenericDataType.Numeric,
-                        )
-                        .map((colname: string) => ({
-                          value: colname,
-                          label: Array.isArray(verboseMap)
-                            ? colname
-                            : (verboseMap[colname] ?? colname),
-                          dataType:
-                            colnames && coltypes[colnames?.indexOf(colname)],
-                        }))
+                      .filter(
+                        (colname: string, index: number) =>
+                          coltypes[index] === GenericDataType.Numeric,
+                      )
+                      .map((colname: string) => ({
+                        value: colname,
+                        label: Array.isArray(verboseMap)
+                          ? colname
+                          : (verboseMap[colname] ?? colname),
+                        dataType:
+                          colnames && coltypes[colnames?.indexOf(colname)],
+                      }))
                     : [];
                 const columnOptions = hasTimeComparison
                   ? processComparisonColumns(
-                      numericColumns || [],
-                      ensureIsArray(timeCompareValue)[0]?.toString() || '',
-                    )
+                    numericColumns || [],
+                    ensureIsArray(timeCompareValue)[0]?.toString() || '',
+                  )
                   : numericColumns;
 
                 return {

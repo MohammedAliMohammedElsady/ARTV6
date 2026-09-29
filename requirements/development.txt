@@ -1136,3 +1136,5 @@ zstandard==0.23.0
 
 pymssql>=2.3.13,<3
 oracledb>=4.0.2,<5
+
+elasticsearch-dbapi
