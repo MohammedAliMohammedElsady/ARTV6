@@ -552,3 +552,117 @@ def test_csv_report_attachment_extension(
     assert email_content.data == {
         f"test report.{expected_extension}": attachment,
     }
+
+
+def test_custom_email_template_jinja() -> None:
+    from tests.conftest import with_config
+    from superset.reports.models import ReportRecipients, ReportRecipientType
+    from superset.reports.notifications.base import NotificationContent
+    from superset.reports.notifications.email import EmailNotification
+
+    custom_template = (
+        '<div class="custom-card"><h1>{{ title }}</h1><p>{{ description }}</p>'
+        '<a href="{{ call_to_action_url }}">{{ call_to_action }}</a></div>'
+    )
+
+    @with_config({"ALERT_REPORTS_EMAIL_TEMPLATE": custom_template})
+    def _run() -> None:
+        content = NotificationContent(
+            name="Daily Revenue Report",
+            description="Here is the daily revenue report summary.",
+            url="http://localhost:8088/superset/dashboard/123/",
+            header_data={"notification_type": "Report"},
+        )
+        notification = EmailNotification(
+            recipient=ReportRecipients(type=ReportRecipientType.EMAIL),
+            content=content,
+        )
+        body = notification._get_content().body
+        assert '<div class="custom-card">' in body
+        assert "<h1>Daily Revenue Report</h1>" in body
+        assert "<p>Here is the daily revenue report summary.</p>" in body
+        assert 'href="http://localhost:8088/superset/dashboard/123/"' in body
+
+    _run()
+
+
+def test_custom_email_template_callable() -> None:
+    from typing import Any
+    from tests.conftest import with_config
+    from superset.reports.models import ReportRecipients, ReportRecipientType
+    from superset.reports.notifications.base import NotificationContent
+    from superset.reports.notifications.email import EmailNotification
+
+    def custom_builder(ctx: dict[str, Any]) -> str:
+        return f"CUSTOM_EMAIL: {ctx['title']} - {ctx['description']}"
+
+    @with_config({"ALERT_REPORTS_EMAIL_TEMPLATE": custom_builder})
+    def _run() -> None:
+        content = NotificationContent(
+            name="Weekly Alert",
+            description="Values exceeded threshold",
+            header_data={"notification_type": "Alert"},
+        )
+        notification = EmailNotification(
+            recipient=ReportRecipients(type=ReportRecipientType.EMAIL),
+            content=content,
+        )
+        body = notification._get_content().body
+        assert body == "CUSTOM_EMAIL: Weekly Alert - Values exceeded threshold"
+
+    _run()
+
+
+def test_custom_email_template_fallback_on_error() -> None:
+    from tests.conftest import with_config
+    from superset.reports.models import ReportRecipients, ReportRecipientType
+    from superset.reports.notifications.base import NotificationContent
+    from superset.reports.notifications.email import EmailNotification
+
+    broken_template = "<div>{{ title }</div>"
+
+    @with_config({"ALERT_REPORTS_EMAIL_TEMPLATE": broken_template})
+    def _run() -> None:
+        content = NotificationContent(
+            name="Fallback Test",
+            description="Description for fallback",
+            header_data={"notification_type": "Report"},
+        )
+        notification = EmailNotification(
+            recipient=ReportRecipients(type=ReportRecipientType.EMAIL),
+            content=content,
+        )
+        body = notification._get_content().body
+        assert "<html>" in body
+        assert "<div>Description for fallback</div>" in body
+
+    _run()
+
+
+def test_custom_error_email_template() -> None:
+    from tests.conftest import with_config
+    from superset.reports.models import ReportRecipients, ReportRecipientType
+    from superset.reports.notifications.base import NotificationContent
+    from superset.reports.notifications.email import EmailNotification
+
+    custom_error_template = (
+        '<div class="error-box"><h2>Failed: {{ title }}</h2><p>{{ error }}</p></div>'
+    )
+
+    @with_config({"ALERT_REPORTS_ERROR_EMAIL_TEMPLATE": custom_error_template})
+    def _run() -> None:
+        content = NotificationContent(
+            name="Failed Query Alert",
+            text="Query execution timed out",
+            header_data={"notification_type": "Alert"},
+        )
+        notification = EmailNotification(
+            recipient=ReportRecipients(type=ReportRecipientType.EMAIL),
+            content=content,
+        )
+        body = notification._get_content().body
+        assert '<div class="error-box">' in body
+        assert "<h2>Failed: Failed Query Alert</h2>" in body
+        assert "<p>Query execution timed out</p>" in body
+
+    _run()

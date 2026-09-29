@@ -172,7 +172,131 @@ PREFERRED_DATABASES = [
 ]
 
 EXTENSIONS_PATH = "/app/docker/extensions"
-ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
+
+# --- SMTP Server Configuration for Alerts & Reports ---
+SMTP_HOST = os.getenv("SMTP_HOST", "localhost")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 25))
+SMTP_STARTTLS = os.getenv("SMTP_STARTTLS", "false").lower() == "true"
+SMTP_SSL = os.getenv("SMTP_SSL", "false").lower() == "true"
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_MAIL_FROM = os.getenv("SMTP_MAIL_FROM", "noreply@datagearbi.com")
+SMTP_TIMEOUT = int(os.getenv("SMTP_TIMEOUT", 30))
+SMTP_SSL_SERVER_AUTH = os.getenv("SMTP_SSL_SERVER_AUTH", "true").lower() == "true"
+
+ALERT_REPORTS_NOTIFICATION_DRY_RUN = (
+    os.getenv("ALERT_REPORTS_NOTIFICATION_DRY_RUN", "false").lower() == "true"
+)
+EMAIL_REPORTS_SUBJECT_PREFIX = os.getenv("EMAIL_REPORTS_SUBJECT_PREFIX", "[ART] ")
+EMAIL_REPORTS_CTA = os.getenv("EMAIL_REPORTS_CTA", "Explore in DataGear ART")
+
+# Custom Email Template for Alerts & Reports
+ALERT_REPORTS_EMAIL_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style type="text/css">
+      body {
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f7fa;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: #2b3a4a;
+      }
+      .email-container {
+        max-width: 1024px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #e1e8ed;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+      .email-header {
+        background-color: #0f4c81;
+        padding: 20px 24px;
+        color: #ffffff;
+      }
+      .email-header h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+        color: #ffffff;
+      }
+      .email-body {
+        padding: 24px;
+      }
+      .email-description {
+        margin-bottom: 20px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #4a5568;
+      }
+      .cta-button {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #0f4c81;
+        color: #ffffff !important;
+        text-decoration: none;
+        border-radius: 4px;
+        font-weight: 500;
+        margin-bottom: 20px;
+      }
+      table, th, td {
+        border-collapse: collapse;
+        border: 1px solid #d2dbe3;
+        color: #2b3a4a;
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+      th {
+        background-color: #f0f4f8;
+        font-weight: 600;
+      }
+      .image {
+        margin-top: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+      .image img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+        border: 1px solid #e2e8f0;
+      }
+      .email-footer {
+        padding: 16px 24px;
+        background-color: #f8fafc;
+        border-top: 1px solid #e1e8ed;
+        font-size: 12px;
+        color: #8795a1;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <div class="email-header">
+        <h2>{{ title }}</h2>
+      </div>
+      <div class="email-body">
+        {% if description %}
+        <div class="email-description">{{ description }}</div>
+        {% endif %}
+        {% if include_cta and call_to_action_url %}
+        <a href="{{ call_to_action_url }}" class="cta-button">{{ call_to_action }}</a>
+        {% endif %}
+        {{ html_table }}
+        {{ img_tag }}
+      </div>
+      <div class="email-footer">
+        Generated automatically by DataGear ART.
+      </div>
+    </div>
+  </body>
+</html>
+"""
 # The Docker Compose app service is named "superset" and listens on 8088. Report
 # paths are root-relative, so urljoin drops the base path; only the scheme, host,
 # and port must be correct here. SUPERSET_APP_ROOT is kept for consumers that
