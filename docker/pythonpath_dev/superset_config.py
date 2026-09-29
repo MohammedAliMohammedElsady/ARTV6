@@ -26,9 +26,10 @@ import sys
 from superset.security.custom_auth import CustomSecurityManager
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
-from sqlalchemy.dialects import registry
 # Same decrypt used by the ARTV6_db_secrets service for Postgres (DATABASE_KEY / Jasypt)
 from decrypt_db_secrets import decrypt
+from sqlalchemy.dialects import registry
+
 
 
 
@@ -75,6 +76,7 @@ SQLALCHEMY_EXAMPLES_URI = os.getenv(
     ),
 )
 TABLE_VIZ_MAX_ROW_SERVER=50000000
+
 
 REDIS_HOST = os.getenv("REDIS_HOST", "ARTV6_cache")
 REDIS_PORT = os.getenv("REDIS_PORT", "6379")
@@ -129,7 +131,20 @@ class CeleryConfig:
 
 CELERY_CONFIG = CeleryConfig
 
+registry.register(
+    "oracle", "sqlalchemy.dialects.oracle.oracledb", "OracleDialect_oracledb"
+)
+registry.register("mssql", "sqlalchemy.dialects.mssql.pymssql", "MSDialect_pymssql")
 
+
+PREFERRED_DATABASES = [
+    "PostgreSQL",
+    "Microsoft SQL Server",
+    "Oracle",
+    "MySQL",
+    "Presto",
+    "SQLite",
+]
 
 
 
@@ -195,7 +210,6 @@ PATH_CRT = os.environ.get('PATH_CRT', "ART-DI-SRV.datagearbi.dom.crt")
 PATH_KEY = os.environ.get('PATH_KEY', "ART-DI-SRV.datagearbi.dom.key")
 PATH_VERIFY = os.environ.get('PATH_VERIFY', "datagearbi-DC-01-CA.cer")
 
-CUSTOM_SECURITY_MANAGER = CustomSecurityManager
 
 # Webserver / gunicorn worker timeout — also exported as env var in .env
 _timeout = int(os.getenv("SUPERSET_WEBSERVER_TIMEOUT", "600"))
@@ -242,4 +256,7 @@ DATA_TABLE_ROW_LIMIT_OPTIONS = [
     {"value": 50000, "label": "50k rows"},
     {"value": 100000, "label": "100k rows"},
 ]
+
+
+CUSTOM_SECURITY_MANAGER = CustomSecurityManager
 
