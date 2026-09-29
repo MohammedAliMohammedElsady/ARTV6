@@ -2592,6 +2592,34 @@ EMAIL_REPORTS_SUBJECT_PREFIX = "[Report] "
 # The text for call-to-action link in Alerts & Reports emails
 EMAIL_REPORTS_CTA = "Explore in Superset"
 
+# Custom HTML/Jinja template for Alert & Report emails.
+# If None, the default Superset email layout is used.
+# Available variables in the template:
+#   - title / name: report/alert name
+#   - description: sanitized report description / markdown
+#   - call_to_action: CTA link text (EMAIL_REPORTS_CTA)
+#   - call_to_action_url: URL to explore dashboard/chart
+#   - call_to_action_tag: rendered HTML anchor tag for CTA
+#   - include_cta: boolean whether CTA link should be included
+#   - html_table: embedded table data as HTML
+#   - img_tag: rendered <img> tags for embedded screenshots
+#   - img_tags: list of individual <img> tags
+#   - images: dict mapping CID to image bytes
+#   - now: current datetime
+ALERT_REPORTS_EMAIL_TEMPLATE: Callable[[dict[str, Any]], str] | str | None = None
+
+# Custom HTML/Jinja template for Alert & Report error failure emails.
+# If None, the default Superset error email layout is used.
+# Available variables:
+#   - title / name: report/alert name
+#   - text / error: sanitized error message
+#   - call_to_action: CTA link text
+#   - call_to_action_url / url: URL to explore dashboard/chart
+#   - call_to_action_tag: rendered HTML anchor tag for CTA
+#   - include_cta: boolean whether CTA link should be included
+#   - now: current datetime
+ALERT_REPORTS_ERROR_EMAIL_TEMPLATE: Callable[[dict[str, Any]], str] | str | None = None
+
 # Slack API token for the superset reports, either string or callable
 SLACK_API_TOKEN: Callable[[], str] | str | None = None
 SLACK_PROXY = None

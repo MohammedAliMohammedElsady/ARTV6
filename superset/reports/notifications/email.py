@@ -20,12 +20,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from email.utils import make_msgid, parseaddr
 from io import BytesIO
-from typing import IO, Optional
+from typing import Any, Callable, IO, Optional
 from zipfile import BadZipFile, ZipFile
 
 import nh3
 from flask import current_app
 from flask_babel import gettext as __
+from jinja2.sandbox import SandboxedEnvironment
 from pytz import timezone
 
 from superset import is_feature_enabled
@@ -69,6 +70,17 @@ ALLOWED_ATTRIBUTES = {
     **ALLOWED_TABLE_ATTRIBUTES,
 }
 ZIP_LOCAL_FILE_HEADER = b"PK\x03\x04"
+
+
+def _render_custom_template(
+    template_src: Callable[[dict[str, Any]], str] | str,
+    context: dict[str, Any],
+) -> str:
+    if callable(template_src):
+        return template_src(context)
+    env = SandboxedEnvironment()
+    template = env.from_string(template_src)
+    return template.render(context)
 
 
 @dataclass
@@ -154,6 +166,29 @@ class EmailNotification(BaseNotification):  # pylint: disable=too-few-public-met
         # matching the sanitization applied to the normal content path.
         # pylint: disable=no-member
         safe_text = nh3.clean(text, tags=set(), attributes={})
+        cta_tag = self._render_call_to_action_paragraph()
+        custom_error_template = current_app.config.get(
+            "ALERT_REPORTS_ERROR_EMAIL_TEMPLATE"
+        )
+        if custom_error_template:
+            try:
+                context = {
+                    "title": self._name,
+                    "name": self._name,
+                    "text": safe_text,
+                    "error": safe_text,
+                    "url": self._content.url,
+                    "call_to_action": self._get_call_to_action(),
+                    "call_to_action_tag": cta_tag,
+                    "include_cta": self._content.include_cta,
+                    "now": self.now,
+                }
+                return _render_custom_template(custom_error_template, context)
+            except Exception:
+                logger.exception(
+                    "Failed to render custom error email template, falling back to default"
+                )
+
         if self._content.include_cta:
             return __(
                 """
@@ -320,33 +355,60 @@ class EmailNotification(BaseNotification):  # pylint: disable=too-few-public-met
             )
         img_tag = "".join(img_tags)
         call_to_action_tag = self._render_call_to_action_tag()
-        body = textwrap.dedent(
-            f"""
-            <html>
-              <head>
-                <style type="text/css">
-                  table, th, td {{
-                    border-collapse: collapse;
-                    border-color: rgb(200, 212, 227);
-                    color: rgb(42, 63, 95);
-                    padding: 4px 8px;
-                  }}
-                  .image{{
-                      margin-bottom: 18px;
-                      min-width: 1000px;
-                  }}
-                </style>
-              </head>
-              <body>
-                <div>{description}</div>
-                <br>
-                {call_to_action_tag}
-                {html_table}
-                {img_tag}
-              </body>
-            </html>
-            """
-        )
+        custom_template = current_app.config.get("ALERT_REPORTS_EMAIL_TEMPLATE")
+        body = None
+        if custom_template:
+            try:
+                context = {
+                    "title": self._name,
+                    "name": self._name,
+                    "description": description,
+                    "call_to_action": self._get_call_to_action(),
+                    "call_to_action_url": self._content.url,
+                    "call_to_action_tag": call_to_action_tag,
+                    "include_cta": self._content.include_cta,
+                    "html_table": html_table,
+                    "img_tag": img_tag,
+                    "img_tags": img_tags,
+                    "images": images,
+                    "now": self.now,
+                    "recipient": self._recipient,
+                    "content": self._content,
+                }
+                body = _render_custom_template(custom_template, context)
+            except Exception:
+                logger.exception(
+                    "Failed to render custom email template, falling back to default"
+                )
+
+        if not body:
+            body = textwrap.dedent(
+                f"""
+                <html>
+                  <head>
+                    <style type="text/css">
+                      table, th, td {{
+                        border-collapse: collapse;
+                        border-color: rgb(200, 212, 227);
+                        color: rgb(42, 63, 95);
+                        padding: 4px 8px;
+                      }}
+                      .image{{
+                          margin-bottom: 18px;
+                          min-width: 1000px;
+                      }}
+                    </style>
+                  </head>
+                  <body>
+                    <div>{description}</div>
+                    <br>
+                    {call_to_action_tag}
+                    {html_table}
+                    {img_tag}
+                  </body>
+                </html>
+                """
+            )
         # CSV and Excel are mutually exclusive (a report has a single format),
         # so at most one tabular attachment is present in the data dict.
         attachment_data: dict[str, bytes | str] | None = None
